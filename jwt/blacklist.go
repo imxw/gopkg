@@ -49,6 +49,9 @@ func (tb *TokenBlacklist) Add(ctx context.Context, jti string, expiration time.D
 	return nil
 }
 
+// Compile-time check that TokenBlacklist satisfies Blacklist.
+var _ Blacklist = (*TokenBlacklist)(nil)
+
 // AddToken adds a token to the blacklist, computing TTL from its expiration time.
 func (tb *TokenBlacklist) AddToken(ctx context.Context, jti string, expiresAt time.Time) error {
 	if expiresAt.Before(time.Now()) {

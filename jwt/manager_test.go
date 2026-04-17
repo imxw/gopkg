@@ -2,9 +2,12 @@ package jwt
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -83,9 +86,56 @@ func TestParseAccessToken_RefreshTokenRejected(t *testing.T) {
 }
 
 func TestParseAccessToken_ExpiredToken(t *testing.T) {
-	assert.Error(t, ErrTokenExpired)
-	assert.Error(t, ErrTokenInvalid)
-	assert.NotEqual(t, ErrTokenExpired, ErrTokenInvalid)
+	cfg := testConfig()
+	tm := NewTokenManager(cfg, nil)
+
+	// Manually build a token that expired in the past
+	claims := ExtendedClaims{
+		UserID:    1,
+		TokenType: TokenTypeAccess,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    cfg.Issuer,
+			Audience:  jwt.ClaimStrings{cfg.Audience},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour)),
+			NotBefore: jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now().Add(-2 * time.Hour)),
+			ID:        GenerateJTI(),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenStr, err := token.SignedString([]byte(cfg.Secret))
+	require.NoError(t, err)
+
+	_, err = tm.ParseAccessToken(context.Background(), tokenStr)
+	assert.ErrorIs(t, err, ErrTokenExpired)
+}
+
+func TestParseAccessToken_WrongSigningMethod(t *testing.T) {
+	cfg := testConfig()
+	tm := NewTokenManager(cfg, nil)
+
+	// Manually craft a JWT with "none" algorithm to bypass HMAC check
+	claims := ExtendedClaims{
+		UserID:    1,
+		TokenType: TokenTypeAccess,
+	}
+	payload, err := json.Marshal(claims)
+	require.NoError(t, err)
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`))
+	body := base64.RawURLEncoding.EncodeToString(payload)
+	fakeToken := header + "." + body + "."
+
+	_, err = tm.ParseAccessToken(context.Background(), fakeToken)
+	assert.Error(t, err)
+}
+
+func TestParseAccessToken_TamperedToken(t *testing.T) {
+	tm := NewTokenManager(testConfig(), nil)
+	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
+	require.NoError(t, err)
+
+	_, err = tm.ParseAccessToken(context.Background(), pair.AccessToken+"tampered")
+	assert.Error(t, err)
 }
 
 func TestRefreshAccessToken_Valid(t *testing.T) {
@@ -142,46 +192,4 @@ func TestGenerateTokenPair_DefaultExpiry(t *testing.T) {
 	assert.NotEmpty(t, pair.AccessToken)
 	assert.Equal(t, int64(0), pair.ExpiresIn)
 	assert.Equal(t, int64(0), pair.RefreshIn)
-}
-
-// --- Blacklist interaction tests (nil blacklist) ---
-
-func TestParseAccessToken_WithBlacklist(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
-	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
-	require.NoError(t, err)
-
-	claims, err := tm.ParseAccessToken(context.Background(), pair.AccessToken)
-	require.NoError(t, err)
-	assert.Equal(t, uint64(1), claims.UserID)
-}
-
-func TestParseAccessToken_RevokedToken(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
-	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
-	require.NoError(t, err)
-
-	claims, err := tm.ParseAccessToken(context.Background(), pair.AccessToken)
-	require.NoError(t, err)
-	assert.Equal(t, TokenTypeAccess, claims.TokenType)
-}
-
-func TestRefreshAccessToken_WithNilBlacklist(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
-	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
-	require.NoError(t, err)
-
-	newPair, err := tm.RefreshAccessToken(context.Background(), pair.RefreshToken)
-	require.NoError(t, err)
-	assert.NotEmpty(t, newPair.AccessToken)
-}
-
-func TestParseAccessToken_TamperedToken(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
-	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
-	require.NoError(t, err)
-
-	tampered := pair.AccessToken + "tampered"
-	_, err = tm.ParseAccessToken(context.Background(), tampered)
-	assert.Error(t, err)
 }

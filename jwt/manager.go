@@ -42,14 +42,21 @@ type TokenPair struct {
 	RefreshIn    int64  `json:"refreshIn"`
 }
 
-// TokenManager manages JWT token lifecycle with injected config and blacklist.
+// Blacklist is the interface for checking and managing revoked tokens.
+// TokenBlacklist (backed by Redis) satisfies this interface.
+type Blacklist interface {
+	AddToken(ctx context.Context, jti string, expiresAt time.Time) error
+	Contains(ctx context.Context, jti string) (bool, error)
+}
+
+// TokenManager manages JWT token lifecycle with injected config and optional blacklist.
 type TokenManager struct {
 	cfg       Config
-	blacklist *TokenBlacklist
+	blacklist Blacklist
 }
 
 // NewTokenManager creates a new TokenManager with the given config and optional blacklist.
-func NewTokenManager(cfg Config, blacklist *TokenBlacklist) *TokenManager {
+func NewTokenManager(cfg Config, blacklist Blacklist) *TokenManager {
 	return &TokenManager{
 		cfg:       cfg,
 		blacklist: blacklist,
