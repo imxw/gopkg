@@ -4,12 +4,14 @@ package errorx
 import (
 	"errors"
 	"fmt"
+	"maps"
 )
 
 // ErrorX 通用错误结构体
 type ErrorX struct {
 	BusinessCode int            `json:"-"`
-	HTTPCode     int            `json:"-"`
+	Status       int            `json:"-"`
+	Name         string         `json:"-"`
 	Message      string         `json:"-"`
 	RawErr       error          `json:"-"`
 	Extra        map[string]any `json:"-"`
@@ -17,16 +19,17 @@ type ErrorX struct {
 }
 
 // New 创建 ErrorX 实例
-func New(businessCode, httpCode int, message string) *ErrorX {
+func New(businessCode, status int, name, message string) *ErrorX {
 	return &ErrorX{
 		BusinessCode: businessCode,
-		HTTPCode:     httpCode,
+		Status:       status,
+		Name:         name,
 		Message:      message,
 	}
 }
 
 func (e *ErrorX) Error() string {
-	base := fmt.Sprintf("biz_code=%d http_code=%d msg=%s", e.BusinessCode, e.HTTPCode, e.Message)
+	base := fmt.Sprintf("biz_code=%d status=%d msg=%s", e.BusinessCode, e.Status, e.Message)
 	if e.RawErr != nil {
 		base += fmt.Sprintf(" raw_err=%v", e.RawErr)
 	}
@@ -38,6 +41,14 @@ func (e *ErrorX) Error() string {
 
 func (e *ErrorX) Unwrap() error {
 	return e.RawErr
+}
+
+func (e *ErrorX) Is(target error) bool {
+	t, ok := target.(*ErrorX)
+	if !ok {
+		return false
+	}
+	return e.BusinessCode == t.BusinessCode
 }
 
 // Wrap 返回副本并设置原始错误，不修改接收者
@@ -60,11 +71,8 @@ func (e *ErrorX) WithExtra(k string, v any) *ErrorX {
 	if cp.Extra == nil {
 		cp.Extra = make(map[string]any)
 	} else {
-		// 复制 map 避免共享引用
 		newExtra := make(map[string]any, len(cp.Extra)+1)
-		for ek, ev := range cp.Extra {
-			newExtra[ek] = ev
-		}
+		maps.Copy(newExtra, cp.Extra)
 		cp.Extra = newExtra
 	}
 	cp.Extra[k] = v
@@ -78,19 +86,14 @@ func (e *ErrorX) WithTraceID(traceID string) *ErrorX {
 	return &cp
 }
 
-func (e *ErrorX) Status() int {
-	return e.HTTPCode
-}
-
-func (e *ErrorX) Data() map[string]interface{} {
-	data := map[string]interface{}{
+func (e *ErrorX) Data() map[string]any {
+	data := map[string]any{
 		"code": e.BusinessCode,
+		"name": e.Name,
 		"msg":  e.Message,
 		"data": struct{}{},
 	}
-	for k, v := range e.Extra {
-		data[k] = v
-	}
+	maps.Copy(data, e.Extra)
 	return data
 }
 
@@ -100,8 +103,8 @@ func FromError(err error) *ErrorX {
 		return nil
 	}
 
-	var ex *ErrorX
-	if errors.As(err, &ex) {
+	ex, ok := errors.AsType[*ErrorX](err)
+	if ok {
 		return ex
 	}
 
