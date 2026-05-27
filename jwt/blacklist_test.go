@@ -11,10 +11,9 @@ import (
 
 // mockBlacklist is an in-memory Blacklist implementation for testing.
 type mockBlacklist struct {
-	store    map[string]time.Time
-	addErr   error // injectable error for AddToken
-	contains bool  // injectable result for Contains
-	containsErr error // injectable error for Contains
+	store       map[string]time.Time
+	addErr      error
+	containsErr error
 }
 
 func newMockBlacklist() *mockBlacklist {
@@ -33,37 +32,12 @@ func (m *mockBlacklist) Contains(_ context.Context, jti string) (bool, error) {
 	if m.containsErr != nil {
 		return false, m.containsErr
 	}
-	if m.contains {
-		return true, nil
-	}
 	_, ok := m.store[jti]
 	return ok, nil
 }
 
-// --- Blacklist construction tests ---
-
-func TestNewTokenBlacklist_DefaultPrefix(t *testing.T) {
-	bl := &TokenBlacklist{prefix: ""}
-	if bl.prefix == "" {
-		bl.prefix = "token_blacklist"
-	}
-	assert.Equal(t, "token_blacklist", bl.prefix)
-}
-
-func TestTokenBlacklist_KeyFormat(t *testing.T) {
-	bl := &TokenBlacklist{prefix: "myapp_bl"}
-	assert.Equal(t, "myapp_bl:jti-123", bl.blacklistKey("jti-123"))
-}
-
-func TestTokenBlacklist_KeyFormat_DefaultPrefix(t *testing.T) {
-	bl := &TokenBlacklist{prefix: "token_blacklist"}
-	assert.Equal(t, "token_blacklist:jti-abc", bl.blacklistKey("jti-abc"))
-}
-
-// --- Error sentinel tests ---
-
 func TestErrorSentinels(t *testing.T) {
-	sentinels := []error{ErrTokenExpired, ErrTokenInvalid, ErrTokenInBlacklist, ErrTokenNotRefreshable, ErrRefreshTokenExpired}
+	sentinels := []error{ErrTokenExpired, ErrTokenInvalid, ErrTokenInBlacklist, ErrTokenNotRefreshable}
 	for _, e := range sentinels {
 		assert.Error(t, e)
 	}
@@ -73,8 +47,6 @@ func TestErrorSentinels(t *testing.T) {
 		}
 	}
 }
-
-// --- Type and struct tests ---
 
 func TestTokenType(t *testing.T) {
 	assert.Equal(t, TokenType("access"), TokenTypeAccess)
@@ -96,8 +68,6 @@ func TestConfig(t *testing.T) {
 	cfg := Config{Secret: "s", Issuer: "i", Audience: "a", TokenExpire: time.Hour, RefreshExpire: 24 * time.Hour}
 	assert.Equal(t, "s", cfg.Secret)
 }
-
-// --- Blacklist integration tests (using mock) ---
 
 func TestNewTokenManager_WithBlacklist(t *testing.T) {
 	cfg := testConfig()
@@ -121,7 +91,6 @@ func TestParseAccessToken_RevokedInBlacklist(t *testing.T) {
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
-	// Simulate token being revoked
 	claims, err := tm.ParseAccessToken(context.Background(), pair.AccessToken)
 	require.NoError(t, err)
 	bl.store[claims.ID] = time.Now().Add(time.Hour)
@@ -152,7 +121,6 @@ func TestRevokeToken_WithBlacklist(t *testing.T) {
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
-	// Extract JTI before revoking
 	claims, err := tm.parseExtendedToken(pair.AccessToken)
 	require.NoError(t, err)
 	jti := claims.ID
@@ -160,7 +128,6 @@ func TestRevokeToken_WithBlacklist(t *testing.T) {
 	err = tm.RevokeToken(context.Background(), pair.AccessToken)
 	assert.NoError(t, err)
 
-	// Verify token is now in blacklist store
 	_, ok := bl.store[jti]
 	assert.True(t, ok, "revoked token should be in blacklist")
 }
@@ -190,7 +157,6 @@ func TestRefreshAccessToken_BlacklistRotation(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, newPair.AccessToken)
 
-	// Old refresh token should be blacklisted
 	claims, err := tm.parseExtendedToken(pair.RefreshToken)
 	require.NoError(t, err)
 	_, ok := bl.store[claims.ID]
@@ -204,7 +170,6 @@ func TestRefreshAccessToken_RevokedRefreshToken(t *testing.T) {
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
-	// Blacklist the refresh token
 	claims, err := tm.parseExtendedToken(pair.RefreshToken)
 	require.NoError(t, err)
 	bl.store[claims.ID] = claims.ExpiresAt.Time

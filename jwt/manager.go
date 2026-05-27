@@ -15,7 +15,6 @@ var (
 	ErrTokenInvalid        = errors.New("token is invalid")
 	ErrTokenInBlacklist    = errors.New("token has been revoked")
 	ErrTokenNotRefreshable = errors.New("token is not refreshable")
-	ErrRefreshTokenExpired = errors.New("refresh token has expired")
 )
 
 // TokenType distinguishes access tokens from refresh tokens.
@@ -37,6 +36,7 @@ type ExtendedClaims struct {
 // TokenPair holds an access/refresh token pair with expiry information.
 type TokenPair struct {
 	AccessToken  string `json:"accessToken"`
+	AccessJTI    string `json:"-"`
 	RefreshToken string `json:"refreshToken"`
 	ExpiresIn    int64  `json:"expiresIn"`
 	RefreshIn    int64  `json:"refreshIn"`
@@ -65,7 +65,7 @@ func NewTokenManager(cfg Config, blacklist Blacklist) *TokenManager {
 
 // GenerateTokenPair generates an access and refresh token pair.
 func (tm *TokenManager) GenerateTokenPair(ctx context.Context, userID int64, userName string) (*TokenPair, error) {
-	accessToken, _, err := tm.generateTokenWithType(userID, userName, TokenTypeAccess, tm.cfg.TokenExpire)
+	accessToken, accessJTI, err := tm.generateTokenWithType(userID, userName, TokenTypeAccess, tm.cfg.TokenExpire)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
@@ -77,6 +77,7 @@ func (tm *TokenManager) GenerateTokenPair(ctx context.Context, userID int64, use
 
 	return &TokenPair{
 		AccessToken:  accessToken,
+		AccessJTI:    accessJTI,
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(tm.cfg.TokenExpire.Seconds()),
 		RefreshIn:    int64(tm.cfg.RefreshExpire.Seconds()),

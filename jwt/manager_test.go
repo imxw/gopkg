@@ -28,6 +28,7 @@ func TestGenerateTokenPair(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
 	assert.NotEmpty(t, pair.RefreshToken)
+	assert.NotEmpty(t, pair.AccessJTI)
 	assert.Equal(t, int64(3600), pair.ExpiresIn)
 	assert.Equal(t, int64(86400), pair.RefreshIn)
 }
