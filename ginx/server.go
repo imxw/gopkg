@@ -51,7 +51,7 @@ func NewEngine(cfg EngineConfig) *gin.Engine {
 		RequestID(),
 		Recovery(),
 		AccessLog(),
-		MaxBytesReader(cfg.MaxBodyBytes),
+		BodyLimit(cfg.MaxBodyBytes),
 		cors.New(buildCORSConfig(cfg)),
 	)
 
@@ -62,7 +62,7 @@ func buildCORSConfig(cfg EngineConfig) cors.Config {
 	corsCfg := cors.Config{
 		AllowMethods: cfg.CORS.AllowMethods,
 		AllowHeaders: cfg.CORS.AllowHeaders,
-		MaxAge:       timeDuration(cfg.CORS.MaxAge),
+		MaxAge:       time.Duration(cfg.CORS.MaxAge) * time.Second,
 	}
 	if len(cfg.CORS.AllowOrigins) == 1 && cfg.CORS.AllowOrigins[0] == "*" {
 		corsCfg.AllowAllOrigins = true
@@ -71,8 +71,4 @@ func buildCORSConfig(cfg EngineConfig) cors.Config {
 		corsCfg.AllowCredentials = true
 	}
 	return corsCfg
-}
-
-func timeDuration(seconds int) time.Duration {
-	return time.Duration(seconds) * time.Second
 }

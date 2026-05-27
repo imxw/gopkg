@@ -4,19 +4,6 @@ import (
 	"context"
 )
 
-// Private key types to avoid collisions.
-type (
-	userIDKeyType         struct{}
-	userNameKeyType       struct{}
-	userPermissionsKeyType struct{}
-)
-
-var (
-	userIDKey          = userIDKeyType{}
-	userNameKey        = userNameKeyType{}
-	userPermissionsKey = userPermissionsKeyType{}
-)
-
 // WithUserID injects the user ID into context.
 func WithUserID(ctx context.Context, userID int64) context.Context {
 	if ctx == nil {
@@ -58,24 +45,4 @@ func UserName(ctx context.Context) string {
 		return ""
 	}
 	return userName
-}
-
-// WithUserPermissions injects the user permission list into context.
-func WithUserPermissions(ctx context.Context, perms []string) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return context.WithValue(ctx, userPermissionsKey, perms)
-}
-
-// UserPermissions extracts the user permission list from context. Returns nil if not present.
-func UserPermissions(ctx context.Context) []string {
-	if ctx == nil {
-		return nil
-	}
-	perms, ok := ctx.Value(userPermissionsKey).([]string)
-	if !ok {
-		return nil
-	}
-	return perms
 }

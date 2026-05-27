@@ -6,7 +6,13 @@ import (
 )
 
 // ctxKey is the private key type for context values.
-type ctxKey struct{}
+type ctxKey int
+
+const (
+	traceIDKey ctxKey = iota
+	userIDKey
+	userNameKey
+)
 
 // GetCtx returns the context or Background if nil.
 func GetCtx(ctx context.Context) context.Context {

@@ -5,12 +5,12 @@ package ginx
 type SwaggerResponse struct {
 	Code int         `json:"code" example:"0"`
 	Msg  string      `json:"msg" example:"Success"`
-	Data interface{} `json:"data,omitempty"`
+	Data any `json:"data,omitempty"`
 }
 
 // SwaggerPageData is a non-generic pagination type for Swagger annotations.
 type SwaggerPageData struct {
-	List     interface{} `json:"list"`
+	List     any   `json:"list"`
 	Total    int64       `json:"total" example:"100"`
 	PageNum  int         `json:"pageNum" example:"1"`
 	PageSize int         `json:"pageSize" example:"20"`

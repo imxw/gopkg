@@ -4,8 +4,6 @@ import (
 	"context"
 )
 
-var traceIDKey = ctxKey{}
-
 // -------------------------- 2. 全局TraceID相关（核心，你的项目刚需） --------------------------
 // WithTraceID 向上下文注入trace_id，项目唯一的注入入口
 func WithTraceID(ctx context.Context, traceID string) context.Context {

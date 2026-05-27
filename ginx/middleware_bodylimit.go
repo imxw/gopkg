@@ -8,17 +8,6 @@ import (
 	"github.com/imxw/gopkg/errorx"
 )
 
-// MaxBytesReader returns middleware that wraps the request body with
-// http.MaxBytesReader to prevent oversized payloads.
-func MaxBytesReader(maxBytes int64) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if c.Request.Body != nil {
-			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBytes)
-		}
-		c.Next()
-	}
-}
-
 // BodyLimit returns middleware that rejects requests whose Content-Length
 // exceeds maxBytes and caps the body reader. Defaults to 2MB.
 func BodyLimit(maxBytes int64) gin.HandlerFunc {

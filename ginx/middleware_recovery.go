@@ -1,12 +1,13 @@
 package ginx
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http/httputil"
 	"os"
 	"runtime/debug"
-	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,12 +25,18 @@ func Recovery() gin.HandlerFunc {
 			if panicErr := recover(); panicErr != nil {
 				ctx := c.Request.Context()
 				brokenPipe := isBrokenPipeError(panicErr)
-				httpRequest, _ := httputil.DumpRequest(c.Request, false)
+
+				var httpRequest string
+				if dump, err := httputil.DumpRequest(c.Request, false); err == nil {
+					httpRequest = string(dump)
+				} else {
+					httpRequest = fmt.Sprintf("method=%s path=%s (dump failed: %v)", c.Request.Method, c.Request.URL.Path, err)
+				}
 
 				if brokenPipe {
 					logger.CtxErrorw(ctx, "broken pipe",
 						"error", panicErr,
-						"request", string(httpRequest),
+						"request", httpRequest,
 					)
 					c.Error(fmt.Errorf("%v", panicErr))
 					c.Abort()
@@ -39,7 +46,7 @@ func Recovery() gin.HandlerFunc {
 				logger.CtxErrorw(ctx, "panic recovered",
 					"panic_time", time.Now(),
 					"error", panicErr,
-					"request", string(httpRequest),
+					"request", httpRequest,
 					"stack", string(debug.Stack()),
 				)
 				Error(c, errorx.ErrInternal.WithMessage("服务器内部异常，请稍后重试"))
@@ -50,12 +57,17 @@ func Recovery() gin.HandlerFunc {
 }
 
 func isBrokenPipeError(err any) bool {
-	if ne, ok := err.(*net.OpError); ok {
-		if se, ok := ne.Err.(*os.SyscallError); ok {
-			s := strings.ToLower(se.Error())
-			return strings.Contains(s, "broken pipe") ||
-				strings.Contains(s, "connection reset by peer")
-		}
+	e, ok := err.(error)
+	if !ok {
+		return false
 	}
-	return false
+	opErr, ok := errors.AsType[*net.OpError](e)
+	if !ok || opErr == nil {
+		return false
+	}
+	sysErr, ok := errors.AsType[*os.SyscallError](opErr.Err)
+	if !ok || sysErr == nil {
+		return false
+	}
+	return sysErr.Err == syscall.EPIPE || sysErr.Err == syscall.ECONNRESET
 }

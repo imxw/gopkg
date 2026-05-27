@@ -23,14 +23,18 @@ func TestGoWithContext_PropagatesContext(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	var gotCtx context.Context
+	ch := make(chan context.Context, 1)
 	GoWithContext(ctx, func(c context.Context) {
-		gotCtx = c
+		ch <- c
 	})
-	time.Sleep(100 * time.Millisecond)
 
-	assert.NotNil(t, gotCtx)
-	assert.Equal(t, ctx, gotCtx)
+	select {
+	case gotCtx := <-ch:
+		assert.NotNil(t, gotCtx)
+		assert.Equal(t, ctx, gotCtx)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for goroutine")
+	}
 }
 
 func TestGo_NormalExecution(t *testing.T) {
