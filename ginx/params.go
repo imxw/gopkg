@@ -19,6 +19,24 @@ type SortParam struct {
 	Order string `form:"order" json:"order" binding:"omitempty,oneof=asc desc"`
 }
 
+// SafeOrder maps the user-supplied sort field to a safe database column name.
+// Must be called in the Store layer; handler never concatenates SQL directly.
+// allowed maps frontend field names to DB column names, e.g. {"hostname": "hostname", "createdAt": "created_at"}.
+func (s SortParam) SafeOrder(allowed map[string]string) (column, order string, ok bool) {
+	if s.Sort == "" {
+		return "", "", false
+	}
+	column, ok = allowed[s.Sort]
+	if !ok {
+		return "", "", false
+	}
+	order = "ASC"
+	if s.Order == "desc" {
+		order = "DESC"
+	}
+	return column, order, true
+}
+
 // QueryParam is a common list-query parameter set covering most CRUD list endpoints.
 type QueryParam struct {
 	PageParam
@@ -29,6 +47,16 @@ type QueryParam struct {
 	UpdatedEnd   time.Time  `form:"updatedEnd" json:"updatedEnd" binding:"omitempty" time_format:"2006-01-02 15:04:05" time_utc:"false"`
 	Status       *int8      `form:"status" json:"status" binding:"omitempty,oneof=0 1"`
 	SortParam
+}
+
+// ToBaseQuery returns the common query fields for database queries.
+func (q *QueryParam) ToBaseQuery() (keyword string, status *int8, start, end time.Time, sort, order string) {
+	return q.Keyword, q.Status, q.CreatedStart, q.CreatedEnd, q.Sort, q.Order
+}
+
+// HasCreatedTimeRange reports whether a created-time range filter is present.
+func (q *QueryParam) HasCreatedTimeRange() bool {
+	return !q.CreatedStart.IsZero() || !q.CreatedEnd.IsZero()
 }
 
 // Sort order constants.

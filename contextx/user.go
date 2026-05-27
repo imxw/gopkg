@@ -18,7 +18,7 @@ var (
 )
 
 // WithUserID injects the user ID into context.
-func WithUserID(ctx context.Context, userID uint64) context.Context {
+func WithUserID(ctx context.Context, userID int64) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -26,11 +26,11 @@ func WithUserID(ctx context.Context, userID uint64) context.Context {
 }
 
 // UserID extracts the user ID from context. Returns 0 if not present.
-func UserID(ctx context.Context) uint64 {
+func UserID(ctx context.Context) int64 {
 	if ctx == nil {
 		return 0
 	}
-	userID, ok := ctx.Value(userIDKey).(uint64)
+	userID, ok := ctx.Value(userIDKey).(int64)
 	if !ok {
 		return 0
 	}

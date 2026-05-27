@@ -1,6 +1,7 @@
 package ginx
 
 import (
+	"fmt"
 	"net"
 	"net/http/httputil"
 	"os"
@@ -30,7 +31,7 @@ func Recovery() gin.HandlerFunc {
 						"error", panicErr,
 						"request", string(httpRequest),
 					)
-					c.Error(panicErr.(error)) //nolint:errcheck
+					c.Error(fmt.Errorf("%v", panicErr))
 					c.Abort()
 					return
 				}

@@ -29,7 +29,7 @@ const (
 // ExtendedClaims extends standard JWT claims with token type information.
 // UserName is stored in RegisteredClaims.Subject to avoid redundancy.
 type ExtendedClaims struct {
-	UserID    uint64    `json:"userID"`
+	UserID    int64     `json:"userID"`
 	TokenType TokenType `json:"tokenType"`
 	jwt.RegisteredClaims
 }
@@ -64,7 +64,7 @@ func NewTokenManager(cfg Config, blacklist Blacklist) *TokenManager {
 }
 
 // GenerateTokenPair generates an access and refresh token pair.
-func (tm *TokenManager) GenerateTokenPair(ctx context.Context, userID uint64, userName string) (*TokenPair, error) {
+func (tm *TokenManager) GenerateTokenPair(ctx context.Context, userID int64, userName string) (*TokenPair, error) {
 	accessToken, _, err := tm.generateTokenWithType(userID, userName, TokenTypeAccess, tm.cfg.TokenExpire)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
@@ -83,7 +83,7 @@ func (tm *TokenManager) GenerateTokenPair(ctx context.Context, userID uint64, us
 	}, nil
 }
 
-func (tm *TokenManager) generateTokenWithType(userID uint64, userName string, tokenType TokenType, expire time.Duration) (string, string, error) {
+func (tm *TokenManager) generateTokenWithType(userID int64, userName string, tokenType TokenType, expire time.Duration) (string, string, error) {
 	if expire <= 0 {
 		expire = time.Hour * 24
 	}

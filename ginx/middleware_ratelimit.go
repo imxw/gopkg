@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/imxw/gopkg/errorx"
+	"github.com/imxw/gopkg/logger"
 )
 
 // RateLimitConfig configures fixed-window rate limiting.
@@ -45,8 +46,8 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 
 		count, err := script.Run(ctx, rl.rdb, []string{key}, int(rl.conf.Window.Seconds())).Int64()
 		if err != nil {
-			Error(c, errorx.ErrTooManyRequests.WithMessage("服务暂时不可用，请稍后再试"))
-			c.Abort()
+			logger.CtxWarnw(c.Request.Context(), "rate limiter redis error", "error", err)
+			c.Next()
 			return
 		}
 		if count > int64(rl.conf.MaxRequests) {

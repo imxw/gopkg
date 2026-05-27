@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/imxw/gopkg/errorx"
+	"github.com/imxw/gopkg/logger"
 )
 
 // PageData is a generic pagination response body.
@@ -46,6 +47,9 @@ func SuccessNoData(c *gin.Context) {
 
 // PaginationSuccess sends a paginated success response.
 func PaginationSuccess[T any](c *gin.Context, list []T, total int64, pageNum, pageSize int) {
+	if list == nil {
+		list = []T{}
+	}
 	Success(c, PageData[T]{
 		List:     list,
 		Total:    total,
@@ -55,8 +59,18 @@ func PaginationSuccess[T any](c *gin.Context, list []T, total int64, pageNum, pa
 }
 
 // Error sends an error JSON response derived from err.
+// If err is nil, it defaults to ErrInternal.
+// 5xx errors are logged at ERROR level (server issues).
+// 4xx errors are not logged (client issues, avoid log flooding).
 func Error(c *gin.Context, err error) {
+	if err == nil {
+		err = errorx.ErrInternal
+	}
 	ex := errorx.FromError(err)
+	if ex.Status >= 500 {
+		logger.CtxErrorw(c.Request.Context(), "server error",
+			"biz_code", ex.BusinessCode, "error", err)
+	}
 	c.JSON(ex.Status, Response[any]{
 		Code: ex.BusinessCode,
 		Msg:  ex.Message,

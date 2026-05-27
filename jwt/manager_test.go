@@ -48,7 +48,7 @@ func TestParseAccessToken_Valid(t *testing.T) {
 
 	claims, err := tm.ParseAccessToken(context.Background(), pair.AccessToken)
 	require.NoError(t, err)
-	assert.Equal(t, uint64(1), claims.UserID)
+	assert.Equal(t, int64(1), claims.UserID)
 	assert.Equal(t, "admin", claims.Subject)
 	assert.Equal(t, TokenTypeAccess, claims.TokenType)
 	assert.Equal(t, "cmdb-test", claims.Issuer)

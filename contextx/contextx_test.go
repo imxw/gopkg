@@ -20,20 +20,20 @@ func TestGetCtx_NonNil(t *testing.T) {
 
 func TestUserID_RoundTrip(t *testing.T) {
 	ctx := WithUserID(context.Background(), 42)
-	assert.Equal(t, uint64(42), UserID(ctx))
+	assert.Equal(t, int64(42), UserID(ctx))
 }
 
 func TestUserID_Zero(t *testing.T) {
-	assert.Equal(t, uint64(0), UserID(context.Background()))
+	assert.Equal(t, int64(0), UserID(context.Background()))
 }
 
 func TestUserID_Nil(t *testing.T) {
-	assert.Equal(t, uint64(0), UserID(nil))
+	assert.Equal(t, int64(0), UserID(nil))
 }
 
 func TestWithUserID_Nil(t *testing.T) {
 	ctx := WithUserID(nil, 1)
-	assert.Equal(t, uint64(1), UserID(ctx))
+	assert.Equal(t, int64(1), UserID(ctx))
 }
 
 func TestUserName_RoundTrip(t *testing.T) {
@@ -70,7 +70,7 @@ func TestCombinedContext(t *testing.T) {
 	ctx = WithUserName(ctx, "testuser")
 	ctx = WithTraceID(ctx, "trace-abc")
 
-	assert.Equal(t, uint64(99), UserID(ctx))
+	assert.Equal(t, int64(99), UserID(ctx))
 	assert.Equal(t, "testuser", UserName(ctx))
 	assert.Equal(t, "trace-abc", TraceID(ctx))
 }

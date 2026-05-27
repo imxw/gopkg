@@ -89,7 +89,7 @@ func TestTokenPair_Fields(t *testing.T) {
 
 func TestExtendedClaims(t *testing.T) {
 	claims := &ExtendedClaims{UserID: 1, TokenType: TokenTypeAccess}
-	assert.Equal(t, uint64(1), claims.UserID)
+	assert.Equal(t, int64(1), claims.UserID)
 }
 
 func TestConfig(t *testing.T) {
