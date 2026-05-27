@@ -1,7 +1,7 @@
 // Package logger 提供生产级别的 Zap 日志封装，支持：
 // 1. 多环境适配（production/development/test）；
 // 2. 动态调整日志级别；
-// 3. 上下文 TraceID 传递；
+// 3. 上下文 RequestID 传递；
 // 4. 日志轮转（文件输出自动切分/压缩）；
 // 5. 兼容 Zap 原生 API，同时封装简化使用。
 //

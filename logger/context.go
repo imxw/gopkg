@@ -35,9 +35,9 @@ func fromContext(ctx context.Context) *zap.SugaredLogger {
 	return L()
 }
 
-func WithTraceID(ctx context.Context, traceID string) context.Context {
-	if traceID == "" {
+func WithRequestID(ctx context.Context, requestID string) context.Context {
+	if requestID == "" {
 		return ctx
 	}
-	return WithFields(ctx, StringField("trace_id", traceID))
+	return WithFields(ctx, StringField("request_id", requestID))
 }

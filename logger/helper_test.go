@@ -206,7 +206,7 @@ func TestCtxMethods_WithFields(t *testing.T) {
 	defer func() { globalLogger = nil }()
 
 	ctx := context.Background()
-	ctx = WithFields(ctx, StringField("trace_id", "trace-abc"))
+	ctx = WithFields(ctx, StringField("request_id", "req-abc"))
 
 	// With fields in context should still work
 	assert.NotPanics(t, func() { CtxInfow(ctx, "with fields") })

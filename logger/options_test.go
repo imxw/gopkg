@@ -13,7 +13,7 @@ func TestDefaultOptions(t *testing.T) {
 	assert.Equal(t, "development", opts.Env)
 	assert.Equal(t, zapcore.InfoLevel, opts.Level)
 	assert.True(t, opts.AddCaller)
-	assert.Equal(t, "trace_id", opts.TraceIDKey)
+	assert.Equal(t, "request_id", opts.RequestIDKey)
 	assert.Equal(t, []string{"stdout"}, opts.OutputPaths)
 	assert.Equal(t, []string{"stderr"}, opts.ErrorOutput)
 	assert.Equal(t, "console", opts.Encoding)

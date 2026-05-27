@@ -13,8 +13,8 @@ import (
 func RequestID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		traceID := uuid.NewString()
-		ctx := contextx.WithTraceID(c.Request.Context(), traceID)
-		ctx = logger.WithTraceID(ctx, traceID)
+		ctx := contextx.WithRequestID(c.Request.Context(), traceID)
+		ctx = logger.WithRequestID(ctx, traceID)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}

@@ -50,27 +50,27 @@ func TestUserName_Nil(t *testing.T) {
 	assert.Equal(t, "", UserName(nil))
 }
 
-func TestTraceID_RoundTrip(t *testing.T) {
-	ctx := WithTraceID(context.Background(), "trace-123")
-	assert.Equal(t, "trace-123", TraceID(ctx))
+func TestRequestID_RoundTrip(t *testing.T) {
+	ctx := WithRequestID(context.Background(), "trace-123")
+	assert.Equal(t, "trace-123", RequestID(ctx))
 }
 
-func TestTraceID_Empty(t *testing.T) {
-	ctx := WithTraceID(context.Background(), "")
-	assert.Equal(t, "", TraceID(ctx))
+func TestRequestID_Empty(t *testing.T) {
+	ctx := WithRequestID(context.Background(), "")
+	assert.Equal(t, "", RequestID(ctx))
 }
 
-func TestTraceID_Nil(t *testing.T) {
-	assert.Equal(t, "", TraceID(nil))
+func TestRequestID_Nil(t *testing.T) {
+	assert.Equal(t, "", RequestID(nil))
 }
 
 func TestCombinedContext(t *testing.T) {
 	ctx := context.Background()
 	ctx = WithUserID(ctx, 99)
 	ctx = WithUserName(ctx, "testuser")
-	ctx = WithTraceID(ctx, "trace-abc")
+	ctx = WithRequestID(ctx, "req-abc")
 
 	assert.Equal(t, int64(99), UserID(ctx))
 	assert.Equal(t, "testuser", UserName(ctx))
-	assert.Equal(t, "trace-abc", TraceID(ctx))
+	assert.Equal(t, "req-abc", RequestID(ctx))
 }

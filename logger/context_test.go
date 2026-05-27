@@ -51,23 +51,23 @@ func TestWithFields_NonZapFieldIgnored(t *testing.T) {
 	assert.NotNil(t, newCtx)
 }
 
-func TestWithTraceID_Empty(t *testing.T) {
+func TestWithRequestID_Empty(t *testing.T) {
 	testLogger(t)
 	defer SetLogger(nil)
 
 	ctx := context.Background()
 
-	// Empty traceID should return same context unchanged
-	newCtx := WithTraceID(ctx, "")
+	// Empty requestID should return same context unchanged
+	newCtx := WithRequestID(ctx, "")
 	assert.Equal(t, ctx, newCtx)
 }
 
-func TestWithTraceID_Valid(t *testing.T) {
+func TestWithRequestID_Valid(t *testing.T) {
 	testLogger(t)
 	defer SetLogger(nil)
 
 	ctx := context.Background()
-	newCtx := WithTraceID(ctx, "abc-123")
+	newCtx := WithRequestID(ctx, "abc-123")
 	assert.NotEqual(t, ctx, newCtx)
 }
 
@@ -102,12 +102,12 @@ func TestFromContext_NoLoggerInContext(t *testing.T) {
 	assert.NotNil(t, logger)
 }
 
-func TestWithTraceID_Chaining(t *testing.T) {
+func TestWithRequestID_Chaining(t *testing.T) {
 	testLogger(t)
 	defer SetLogger(nil)
 
 	ctx := context.Background()
-	ctx = WithTraceID(ctx, "trace-1")
-	ctx = WithTraceID(ctx, "trace-2")
+	ctx = WithRequestID(ctx, "req-1")
+	ctx = WithRequestID(ctx, "req-2")
 	assert.NotEqual(t, context.Background(), ctx)
 }

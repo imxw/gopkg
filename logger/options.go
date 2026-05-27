@@ -13,7 +13,7 @@ type Options struct {
 	Env         string            // 运行环境（production/development/test）
 	Level       zapcore.Level     // 日志级别
 	AddCaller   bool              // 是否显示调用位置
-	TraceIDKey  string            // TraceID 字段名
+	RequestIDKey string            // RequestID 字段名
 	OutputPaths []string          // 输出路径（stdout/stderr/文件路径）
 	ErrorOutput []string          // 错误输出路径
 	Encoding    string            // 编码格式（json/console）
@@ -35,7 +35,7 @@ func DefaultOptions() Options {
 		Env:         getEnv("APP_ENV", "development"),
 		Level:       defaultLevel,
 		AddCaller:   true,
-		TraceIDKey:  "trace_id",
+		RequestIDKey: "request_id",
 		OutputPaths: []string{"stdout"},
 		ErrorOutput: []string{"stderr"},
 		Encoding:    "console",
