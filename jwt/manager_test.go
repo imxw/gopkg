@@ -194,3 +194,49 @@ func TestGenerateTokenPair_DefaultExpiry(t *testing.T) {
 	assert.Equal(t, int64(0), pair.ExpiresIn)
 	assert.Equal(t, int64(0), pair.RefreshIn)
 }
+
+func TestGenerateTokenPairInOrg_ClaimsRoundTrip(t *testing.T) {
+	tm := NewTokenManager(testConfig(), nil)
+
+	pair, err := tm.GenerateTokenPairInOrg(context.Background(), 7, "zhang", 2)
+	if err != nil {
+		t.Fatalf("generate token pair in org: %v", err)
+	}
+
+	claims, err := tm.ParseAccessToken(context.Background(), pair.AccessToken)
+	if err != nil {
+		t.Fatalf("parse access token: %v", err)
+	}
+	if claims.OrgID != 2 {
+		t.Fatalf("expected orgID 2, got %d", claims.OrgID)
+	}
+
+	// Refresh must carry the org context into the rotated pair.
+	newPair, err := tm.RefreshAccessToken(context.Background(), pair.RefreshToken)
+	if err != nil {
+		t.Fatalf("refresh access token: %v", err)
+	}
+	newClaims, err := tm.ParseAccessToken(context.Background(), newPair.AccessToken)
+	if err != nil {
+		t.Fatalf("parse rotated access token: %v", err)
+	}
+	if newClaims.OrgID != 2 {
+		t.Fatalf("expected rotated orgID 2, got %d", newClaims.OrgID)
+	}
+}
+
+func TestGenerateTokenPair_OmitsOrgClaim(t *testing.T) {
+	tm := NewTokenManager(testConfig(), nil)
+
+	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
+	if err != nil {
+		t.Fatalf("generate token pair: %v", err)
+	}
+	claims, err := tm.ParseAccessToken(context.Background(), pair.AccessToken)
+	if err != nil {
+		t.Fatalf("parse access token: %v", err)
+	}
+	if claims.OrgID != 0 {
+		t.Fatalf("expected orgID 0 (claim omitted), got %d", claims.OrgID)
+	}
+}

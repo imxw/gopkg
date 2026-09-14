@@ -12,6 +12,7 @@ const (
 	requestIDKey ctxKey = iota
 	userIDKey
 	userNameKey
+	orgIDKey
 )
 
 // GetCtx returns the context or Background if nil.

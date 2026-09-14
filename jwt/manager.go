@@ -27,8 +27,11 @@ const (
 
 // ExtendedClaims extends standard JWT claims with token type information.
 // UserName is stored in RegisteredClaims.Subject to avoid redundancy.
+// OrgID carries the current organization context (multi-org session):
+// switching orgs means re-issuing the token pair.
 type ExtendedClaims struct {
 	UserID    int64     `json:"userID"`
+	OrgID     int64     `json:"orgID,omitempty"`
 	TokenType TokenType `json:"tokenType"`
 	jwt.RegisteredClaims
 }
@@ -40,6 +43,9 @@ type TokenPair struct {
 	RefreshToken string `json:"refreshToken"`
 	ExpiresIn    int64  `json:"expiresIn"`
 	RefreshIn    int64  `json:"refreshIn"`
+	// OrgID echoes the org context bound into the tokens (0 if none),
+	// so callers can surface it without re-parsing the access token.
+	OrgID int64 `json:"orgId,omitempty"`
 }
 
 // Blacklist is the interface for checking and managing revoked tokens.
@@ -63,14 +69,22 @@ func NewTokenManager(cfg Config, blacklist Blacklist) *TokenManager {
 	}
 }
 
-// GenerateTokenPair generates an access and refresh token pair.
+// GenerateTokenPair generates an access and refresh token pair without an org
+// context. Prefer GenerateTokenPairInOrg for HTTP sessions so downstream
+// authorization can scope by org.
 func (tm *TokenManager) GenerateTokenPair(ctx context.Context, userID int64, userName string) (*TokenPair, error) {
-	accessToken, accessJTI, err := tm.generateTokenWithType(userID, userName, TokenTypeAccess, tm.cfg.TokenExpire)
+	return tm.GenerateTokenPairInOrg(ctx, userID, userName, 0)
+}
+
+// GenerateTokenPairInOrg generates an access and refresh token pair bound to
+// the given organization context. orgID <= 0 omits the org claim.
+func (tm *TokenManager) GenerateTokenPairInOrg(ctx context.Context, userID int64, userName string, orgID int64) (*TokenPair, error) {
+	accessToken, accessJTI, err := tm.generateTokenWithType(userID, userName, orgID, TokenTypeAccess, tm.cfg.TokenExpire)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
 
-	refreshToken, _, err := tm.generateTokenWithType(userID, userName, TokenTypeRefresh, tm.cfg.RefreshExpire)
+	refreshToken, _, err := tm.generateTokenWithType(userID, userName, orgID, TokenTypeRefresh, tm.cfg.RefreshExpire)
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
@@ -81,10 +95,11 @@ func (tm *TokenManager) GenerateTokenPair(ctx context.Context, userID int64, use
 		RefreshToken: refreshToken,
 		ExpiresIn:    int64(tm.cfg.TokenExpire.Seconds()),
 		RefreshIn:    int64(tm.cfg.RefreshExpire.Seconds()),
+		OrgID:        orgID,
 	}, nil
 }
 
-func (tm *TokenManager) generateTokenWithType(userID int64, userName string, tokenType TokenType, expire time.Duration) (string, string, error) {
+func (tm *TokenManager) generateTokenWithType(userID int64, userName string, orgID int64, tokenType TokenType, expire time.Duration) (string, string, error) {
 	if expire <= 0 {
 		expire = time.Hour * 24
 	}
@@ -92,6 +107,7 @@ func (tm *TokenManager) generateTokenWithType(userID int64, userName string, tok
 	jti := GenerateJTI()
 	claims := ExtendedClaims{
 		UserID:    userID,
+		OrgID:     orgID,
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    tm.cfg.Issuer,
@@ -143,6 +159,18 @@ func (tm *TokenManager) ParseAccessToken(ctx context.Context, tokenStr string) (
 	return claims, nil
 }
 
+// ParseRefreshToken parses a refresh token and returns its claims without blacklist checking.
+func (tm *TokenManager) ParseRefreshToken(tokenStr string) (*ExtendedClaims, error) {
+	claims, err := tm.parseExtendedToken(tokenStr)
+	if err != nil {
+		return nil, err
+	}
+	if claims.TokenType != TokenTypeRefresh {
+		return nil, fmt.Errorf("%w: expected refresh, got %s", ErrTokenInvalid, claims.TokenType)
+	}
+	return claims, nil
+}
+
 // RefreshAccessToken uses a refresh token to generate a new token pair.
 func (tm *TokenManager) RefreshAccessToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	claims, err := tm.parseExtendedToken(refreshToken)
@@ -170,7 +198,9 @@ func (tm *TokenManager) RefreshAccessToken(ctx context.Context, refreshToken str
 		}
 	}
 
-	return tm.GenerateTokenPair(ctx, claims.UserID, claims.Subject)
+	// Carry the org context into the rotated pair: refresh must not silently
+	// drop or change the session's organization binding.
+	return tm.GenerateTokenPairInOrg(ctx, claims.UserID, claims.Subject, claims.OrgID)
 }
 
 // RevokeToken revokes a token by adding it to the blacklist.

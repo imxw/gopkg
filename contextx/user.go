@@ -46,3 +46,25 @@ func UserName(ctx context.Context) string {
 	}
 	return userName
 }
+
+// WithOrgID injects the organization ID into context (multi-org session context).
+func WithOrgID(ctx context.Context, orgID int64) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	return context.WithValue(ctx, orgIDKey, orgID)
+}
+
+// OrgID extracts the organization ID from context. Returns 0 if not present.
+// Authorization chains that must scope by org should treat 0 as
+// "no org context" and fail closed rather than fall back to a default org.
+func OrgID(ctx context.Context) int64 {
+	if ctx == nil {
+		return 0
+	}
+	orgID, ok := ctx.Value(orgIDKey).(int64)
+	if !ok {
+		return 0
+	}
+	return orgID
+}
