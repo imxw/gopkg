@@ -35,7 +35,8 @@ type SortParam struct {
 }
 
 // SafeOrder maps the user-supplied sort field to a safe database column name.
-// Must be called in the Store layer; handler never concatenates SQL directly.
+// Called in the handler layer to validate sort parameters before passing to domain.
+// The store layer must also independently validate via its own whitelist as defense-in-depth.
 // allowed maps frontend field names to DB column names, e.g. {"hostname": "hostname", "createdAt": "created_at"}.
 func (s SortParam) SafeOrder(allowed map[string]string) (column, order string, ok bool) {
 	if s.Sort == "" {

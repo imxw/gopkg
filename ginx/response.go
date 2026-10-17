@@ -69,7 +69,7 @@ func Error(c *gin.Context, err error) {
 	ex := errorx.FromError(err)
 	if ex.Status >= 500 {
 		logger.CtxErrorw(c.Request.Context(), "server error",
-			"biz_code", ex.BusinessCode, "error", err)
+			logger.IntField("biz_code", ex.BusinessCode), logger.ErrorField(err))
 	}
 	c.JSON(ex.Status, Response[any]{
 		Code: ex.BusinessCode,

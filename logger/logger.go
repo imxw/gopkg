@@ -73,7 +73,7 @@ func L() *zap.SugaredLogger {
 // SetLevel 动态调整全局日志级别
 func SetLevel(level zapcore.Level) {
 	atomicLevel.SetLevel(level) // 直接修改全局级别控制器
-	L().Infow("log level updated", "new_level", level.String())
+	L().Infow("log level updated", StringField("new_level", level.String()))
 }
 
 // GetLevel 获取当前日志级别

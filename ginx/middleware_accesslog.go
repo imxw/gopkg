@@ -21,11 +21,11 @@ func AccessLog() gin.HandlerFunc {
 		userAgent := c.Request.UserAgent()
 
 		logger.CtxDebugw(ctx, "HTTP request incoming",
-			"method", method,
-			"path", path,
-			"query", query,
-			"client_ip", clientIP,
-			"user_agent", userAgent,
+			logger.StringField("method", method),
+			logger.StringField("path", path),
+			logger.StringField("query", query),
+			logger.StringField("client_ip", clientIP),
+			logger.StringField("user_agent", userAgent),
 		)
 
 		c.Next()
@@ -33,13 +33,13 @@ func AccessLog() gin.HandlerFunc {
 		costMs := time.Since(startTime).Milliseconds()
 		httpCode := c.Writer.Status()
 		logFields := []interface{}{
-			"method", method,
-			"path", path,
-			"query", query,
-			"client_ip", clientIP,
-			"user_agent", userAgent,
-			"http_code", httpCode,
-			"cost_ms", costMs,
+			logger.StringField("method", method),
+			logger.StringField("path", path),
+			logger.StringField("query", query),
+			logger.StringField("client_ip", clientIP),
+			logger.StringField("user_agent", userAgent),
+			logger.IntField("http_code", httpCode),
+			logger.Int64Field("cost_ms", costMs),
 		}
 
 		switch {

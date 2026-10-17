@@ -26,8 +26,8 @@ func GoWithContext(ctx context.Context, fn func(ctx context.Context)) {
 func recoverPanic() {
 	if r := recover(); r != nil {
 		logger.Errorw("goroutine panic recovered",
-			"error", r,
-			"stack", string(debug.Stack()),
+			logger.AnyField("error", r),
+			logger.StringField("stack", string(debug.Stack())),
 		)
 	}
 }

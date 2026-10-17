@@ -35,8 +35,8 @@ func Recovery() gin.HandlerFunc {
 
 				if brokenPipe {
 					logger.CtxErrorw(ctx, "broken pipe",
-						"error", panicErr,
-						"request", httpRequest,
+						logger.AnyField("error", panicErr),
+						logger.StringField("request", httpRequest),
 					)
 					c.Error(fmt.Errorf("%v", panicErr))
 					c.Abort()
@@ -44,10 +44,10 @@ func Recovery() gin.HandlerFunc {
 				}
 
 				logger.CtxErrorw(ctx, "panic recovered",
-					"panic_time", time.Now(),
-					"error", panicErr,
-					"request", httpRequest,
-					"stack", string(debug.Stack()),
+					logger.TimeField("panic_time", time.Now()),
+					logger.AnyField("error", panicErr),
+					logger.StringField("request", httpRequest),
+					logger.StringField("stack", string(debug.Stack())),
 				)
 				Error(c, errorx.ErrInternal.WithMessage("服务器内部异常，请稍后重试"))
 			}

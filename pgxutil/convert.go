@@ -59,12 +59,12 @@ func FromPgInt4(v pgtype.Int4) int32 {
 	return v.Int32
 }
 
-// ToPgInt4Ptr converts *int to pgtype.Int4.
-func ToPgInt4Ptr(i *int) pgtype.Int4 {
+// ToPgInt4Ptr converts *int32 to pgtype.Int4.
+func ToPgInt4Ptr(i *int32) pgtype.Int4 {
 	if i == nil {
 		return pgtype.Int4{Valid: false}
 	}
-	return pgtype.Int4{Int32: int32(*i), Valid: true}
+	return pgtype.Int4{Int32: *i, Valid: true}
 }
 
 // ToPgBoolPtr converts *bool to pgtype.Bool.
@@ -80,12 +80,28 @@ func ToPgInt8(i int64) pgtype.Int8 {
 	return pgtype.Int8{Int64: i, Valid: true}
 }
 
+// ToPgInt8Ptr converts *int64 to pgtype.Int8.
+func ToPgInt8Ptr(i *int64) pgtype.Int8 {
+	if i == nil {
+		return pgtype.Int8{Valid: false}
+	}
+	return pgtype.Int8{Int64: *i, Valid: true}
+}
+
 // FromPgInt8 converts pgtype.Int8 to int64.
 func FromPgInt8(v pgtype.Int8) int64 {
 	if !v.Valid {
 		return 0
 	}
 	return v.Int64
+}
+
+// FromPgInt8Ptr converts pgtype.Int8 to *int64 (nullable).
+func FromPgInt8Ptr(v pgtype.Int8) *int64 {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Int64
 }
 
 // ToPgTimestamptzPtr converts a *time.Time to pgtype.Timestamptz.
@@ -150,5 +166,22 @@ func ToPgUUID(s *string) pgtype.UUID {
 
 // ToPgUUIDFromUUID converts a uuid.UUID to pgtype.UUID.
 func ToPgUUIDFromUUID(id uuid.UUID) pgtype.UUID {
-	return pgtype.UUID{Valid: true, Bytes: [16]byte(id)}
+	return pgtype.UUID{Valid: true, Bytes: id}
+}
+
+// ToPgUUIDPtr converts *uuid.UUID to pgtype.UUID.
+func ToPgUUIDPtr(u *uuid.UUID) pgtype.UUID {
+	if u == nil {
+		return pgtype.UUID{Valid: false}
+	}
+	return pgtype.UUID{Bytes: *u, Valid: true}
+}
+
+// FromPgUUIDToPtr converts pgtype.UUID to *uuid.UUID.
+func FromPgUUIDToPtr(u pgtype.UUID) *uuid.UUID {
+	if !u.Valid {
+		return nil
+	}
+	id := uuid.UUID(u.Bytes)
+	return &id
 }

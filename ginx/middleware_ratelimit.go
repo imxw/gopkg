@@ -46,7 +46,7 @@ func (rl *RateLimiter) Middleware() gin.HandlerFunc {
 
 		count, err := script.Run(ctx, rl.rdb, []string{key}, int(rl.conf.Window.Seconds())).Int64()
 		if err != nil {
-			logger.CtxWarnw(c.Request.Context(), "rate limiter redis error", "error", err)
+			logger.CtxWarnw(c.Request.Context(), "rate limiter redis error", logger.ErrorField(err))
 			c.Next()
 			return
 		}
