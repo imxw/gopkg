@@ -3,6 +3,7 @@ package ginx
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/imxw/gopkg/contextx"
 	"github.com/imxw/gopkg/errorx"
 	"github.com/imxw/gopkg/logger"
 )
@@ -20,6 +21,12 @@ type Response[T any] struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
 	Data T      `json:"data,omitempty"`
+	// 错误腿专列：Error 是 errorx NAME（稳定串码，供客户端语义分派——
+	// int 业务码属服务端内部分配表，不作为客户端分支依据）；RequestID
+	// 是请求关联 ID（对账日志/排障，对应 RFC 9457 的 instance）。仅错误
+	// 腿填充；成功腿零值经 omitempty 不出线——向后兼容纯增量。
+	Error     string `json:"error,omitempty"`
+	RequestID string `json:"requestId,omitempty"`
 }
 
 // Success sends a successful JSON response with data.
@@ -71,10 +78,18 @@ func Error(c *gin.Context, err error) {
 		logger.CtxErrorw(c.Request.Context(), "server error",
 			logger.IntField("biz_code", ex.BusinessCode), logger.ErrorField(err))
 	}
+	// 请求关联 ID：ErrorX 显式携带的 TraceID 优先，否则取 RequestID
+	// 中间件注入的上下文值（NewEngine 默认挂链首）。
+	requestID := ex.TraceID
+	if requestID == "" {
+		requestID = contextx.RequestID(c.Request.Context())
+	}
 	c.JSON(ex.Status, Response[any]{
-		Code: ex.BusinessCode,
-		Msg:  ex.Message,
-		Data: nil,
+		Code:      ex.BusinessCode,
+		Msg:       ex.Message,
+		Error:     ex.Name,
+		RequestID: requestID,
+		Data:      nil,
 	})
 }
 

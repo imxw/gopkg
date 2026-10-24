@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/imxw/gopkg/contextx"
 	"github.com/imxw/gopkg/errorx"
 )
 
@@ -43,6 +44,23 @@ func TestError_KnownErr(t *testing.T) {
 	var body map[string]any
 	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	assert.Equal(t, float64(errorx.CodeNotFound), body["code"])
+	// 错误腿携带 errorx NAME（客户端语义分派键）。
+	assert.Equal(t, "NOT_FOUND", body["error"])
+	// 无 RequestID 中间件时零值省略（成功腿同理不出线）。
+	assert.NotContains(t, w.Body.String(), "requestId")
+}
+
+func TestError_RequestIDFromContext(t *testing.T) {
+	c, w := newTestContext()
+	ctx := contextx.WithRequestID(c.Request.Context(), "req-abc-123")
+	c.Request = c.Request.WithContext(ctx)
+
+	Error(c, errorx.ErrNotFound)
+
+	var body map[string]any
+	assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "req-abc-123", body["requestId"])
+	assert.Equal(t, "NOT_FOUND", body["error"])
 }
 
 func TestSuccess_NoData(t *testing.T) {
