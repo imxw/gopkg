@@ -13,6 +13,11 @@ type EngineConfig struct {
 	TrustedProxies []string
 	MaxBodyBytes   int64
 	CORS           CORSConfig
+	// DisableSecurityHeaders 退出内建安全响应头（SecurityHeaders：CSP/
+	// nosniff/X-Frame-Options/Referrer-Policy）。缺省开启（secure by
+	// default）——零值 false 保持守卫在位；自服务 HTML 的消费方可退出
+	// 后自行承担策略（下游重新 Set 同名 header 亦可覆盖单条）。
+	DisableSecurityHeaders bool
 }
 
 // CORSConfig holds CORS settings.
@@ -39,6 +44,8 @@ func DefaultEngineConfig() EngineConfig {
 }
 
 // NewEngine creates a Gin engine with global middleware (no routes).
+// SecurityHeaders 排在链首：限流拒绝、CORS 拒绝、recovery 500 等一切
+// 短路路径同样落安全头（被拒响应恰是最可能被利用的注入面）。
 func NewEngine(cfg EngineConfig) *gin.Engine {
 	if cfg.Mode == "release" {
 		gin.SetMode(gin.ReleaseMode)
@@ -47,6 +54,9 @@ func NewEngine(cfg EngineConfig) *gin.Engine {
 	r := gin.New()
 	r.SetTrustedProxies(cfg.TrustedProxies)
 
+	if !cfg.DisableSecurityHeaders {
+		r.Use(SecurityHeaders())
+	}
 	r.Use(
 		RequestID(),
 		Recovery(),
