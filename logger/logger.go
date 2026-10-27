@@ -20,7 +20,12 @@ var (
 	atomicLevel      = zap.NewAtomicLevelAt(defaultLevel)
 )
 
-// Init 初始化全局 Logger（入口方法，调用 options/builder 逻辑）
+// Init 初始化全局 Logger（入口方法，调用 options/builder 逻辑）。
+//
+// ⚠️ 语义：进程内**只有首次调用生效**（sync.Once），再次调用静默 no-op
+// ——测试里替换 Logger 用 SetLogger，不要重复 Init。宿主程序应在启动
+// 期显式 Init 一次；未 Init 时首次打日志会经 L() 惰性初始化（隐式建
+// 默认输出，库内不推荐依赖此兜底）。
 func Init(opts ...func(*Options)) {
 	globalLoggerOnce.Do(func() {
 		// 1. 合并配置

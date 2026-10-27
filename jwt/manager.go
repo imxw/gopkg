@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // Classification errors — use errors.Is(err, ErrXxx) to check.
@@ -227,18 +227,18 @@ func (tm *TokenManager) parseExtendedToken(tokenStr string) (*ExtendedClaims, er
 		return nil, ErrTokenInvalid
 	}
 
+	// jwt/v5：算法约束优先用 WithValidMethods 白名单（解析器在验签前强制），
+	// keyfunc 内的 HMAC 断言作为二道防线保留。
 	token, err := jwt.ParseWithClaims(tokenStr, &ExtendedClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("%w: unsupported signing method", ErrTokenInvalid)
 		}
 		return []byte(tm.cfg.Secret), nil
-	})
+	}, jwt.WithValidMethods([]string{"HS256"}))
 	if err != nil {
-		var ve *jwt.ValidationError
-		if errors.As(err, &ve) {
-			if ve.Errors&jwt.ValidationErrorExpired != 0 {
-				return nil, fmt.Errorf("%w: %v", ErrTokenExpired, err)
-			}
+		// v5 用哨兵错误分类（ValidationError 位掩码已移除）。
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, fmt.Errorf("%w: %v", ErrTokenExpired, err)
 		}
 		return nil, fmt.Errorf("%w: %v", ErrTokenInvalid, err)
 	}

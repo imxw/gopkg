@@ -3,9 +3,9 @@ package logger
 import (
 	"os"
 
-	"github.com/natefinch/lumberjack"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // buildZapLogger 构建 zap.Logger（生产级可扩展）

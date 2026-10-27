@@ -2,7 +2,7 @@
 package pgxutil
 
 import (
-	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -121,9 +121,12 @@ func FromPgTimestamptz(v pgtype.Timestamptz) *time.Time {
 }
 
 // ToPgNumeric converts float64 to pgtype.Numeric.
+// 全精度序列化（-1 = 最短精确表示）——转换器不做业务舍入；需要两位小数
+// 的列约束由 DB numeric(x,2) 或业务层负责（曾用 %.2f 静默截断，汇率/
+// 成本类两位以上小数在入库前就被抹掉）。
 func ToPgNumeric(f float64) pgtype.Numeric {
 	var n pgtype.Numeric
-	_ = n.Scan(fmt.Sprintf("%.2f", f))
+	_ = n.Scan(strconv.FormatFloat(f, 'f', -1, 64))
 	return n
 }
 
