@@ -79,7 +79,7 @@ func TestSync_FilterPlatformErrors(t *testing.T) {
 				assert.NotNil(t, got, "expected non-nil for error: %q", tt.errMsg)
 			}
 
-			SetLogger(nil)
+			resetLoggerState()
 		})
 	}
 }
@@ -115,7 +115,7 @@ func filterSyncError(err error) error {
 
 func TestSetLogger(t *testing.T) {
 	// Should not panic with nil
-	SetLogger(nil)
+	resetLoggerState()
 	assert.Nil(t, globalLogger)
 
 	// Should not panic with valid logger built via buildZapLogger
@@ -163,7 +163,7 @@ func TestShortcutMethods_DelegatesToL(t *testing.T) {
 
 func TestSync_NilGlobalLogger(t *testing.T) {
 	// When globalLogger is nil, Sync should return nil
-	SetLogger(nil)
+	resetLoggerState()
 	err := Sync()
 	assert.Nil(t, err)
 }

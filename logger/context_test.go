@@ -15,7 +15,7 @@ func testLogger(t *testing.T) {
 
 func TestWithFields_NilContext(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	// nil context should not panic, should use background
 	ctx := WithFields(context.TODO(), StringField("k", "v"))
@@ -24,7 +24,7 @@ func TestWithFields_NilContext(t *testing.T) {
 
 func TestWithFields_EmptyFields(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	ctx := context.Background()
 	// Empty fields should not panic, but may return a new context with logger set
@@ -34,7 +34,7 @@ func TestWithFields_EmptyFields(t *testing.T) {
 
 func TestWithFields_ValidZapField(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	ctx := context.Background()
 	newCtx := WithFields(ctx, StringField("key", "value"))
@@ -43,7 +43,7 @@ func TestWithFields_ValidZapField(t *testing.T) {
 
 func TestWithFields_NonZapFieldIgnored(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	ctx := context.Background()
 	// Non-zap.Field values should be silently dropped
@@ -53,7 +53,7 @@ func TestWithFields_NonZapFieldIgnored(t *testing.T) {
 
 func TestWithRequestID_Empty(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	ctx := context.Background()
 
@@ -64,7 +64,7 @@ func TestWithRequestID_Empty(t *testing.T) {
 
 func TestWithRequestID_Valid(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	ctx := context.Background()
 	newCtx := WithRequestID(ctx, "abc-123")
@@ -73,7 +73,7 @@ func TestWithRequestID_Valid(t *testing.T) {
 
 func TestWithFields_Chaining(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	ctx := context.Background()
 	ctx = WithFields(ctx, StringField("a", "1"))
@@ -84,7 +84,7 @@ func TestWithFields_Chaining(t *testing.T) {
 
 func TestFromContext_NilContext(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	// fromContext explicitly handles nil by returning global logger
 	//nolint:staticcheck // testing internal nil-handling behavior
@@ -94,7 +94,7 @@ func TestFromContext_NilContext(t *testing.T) {
 
 func TestFromContext_NoLoggerInContext(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	// Context without logger should return global logger
 	ctx := context.Background()
@@ -104,7 +104,7 @@ func TestFromContext_NoLoggerInContext(t *testing.T) {
 
 func TestWithRequestID_Chaining(t *testing.T) {
 	testLogger(t)
-	defer SetLogger(nil)
+	defer resetLoggerState()
 
 	ctx := context.Background()
 	ctx = WithRequestID(ctx, "req-1")

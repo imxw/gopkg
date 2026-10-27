@@ -191,8 +191,11 @@ func TestGenerateTokenPair_DefaultExpiry(t *testing.T) {
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
-	assert.Equal(t, int64(0), pair.ExpiresIn)
-	assert.Equal(t, int64(0), pair.RefreshIn)
+	// 零值 config：generateTokenWithType 兜底 24h，元数据必须与 token
+	// 实际 exp 同源（曾报 0——客户端凭 expiresIn 排刷新计划，0 破坏
+	// 协议；2026-10-27 用户裁决元数据对齐真实过期）。
+	assert.Equal(t, int64(24*time.Hour/time.Second), pair.ExpiresIn)
+	assert.Equal(t, int64(24*time.Hour/time.Second), pair.RefreshIn)
 }
 
 func TestGenerateTokenPairInOrg_ClaimsRoundTrip(t *testing.T) {

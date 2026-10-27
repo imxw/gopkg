@@ -10,10 +10,13 @@ import (
 // -------------------------- 全局 Logger 辅助方法 --------------------------
 // SetLogger 替换全局 Logger（仅测试用，生产级禁用）
 // 示例：logger.SetLogger(zap.NewExample())
-// 如果传入 nil，会将全局 logger 重置为 nil（禁用日志）
+// 如果传入 nil，会将全局 logger 重置为 nil（禁用日志）——禁用是**显式
+// 决策**，落 initFired 后 L() 的兜底初始化不得重新接管（否则「禁用日志」
+// 在下一条日志上被静默重新建出，且修复前 nil sugar 曾致调用方 SIGSEGV）。
 func SetLogger(l *zap.Logger) {
 	globalLoggerMu.Lock()
 	defer globalLoggerMu.Unlock()
+	initFired.Store(true)
 	if l == nil {
 		globalLogger = nil
 		return

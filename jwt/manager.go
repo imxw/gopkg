@@ -89,14 +89,25 @@ func (tm *TokenManager) GenerateTokenPairInOrg(ctx context.Context, userID int64
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
-	return &TokenPair{
-		AccessToken:  accessToken,
-		AccessJTI:    accessJTI,
-		RefreshToken: refreshToken,
-		ExpiresIn:    int64(tm.cfg.TokenExpire.Seconds()),
-		RefreshIn:    int64(tm.cfg.RefreshExpire.Seconds()),
-		OrgID:        orgID,
-	}, nil
+// TokenPair 有效期元数据与 token 内嵌 exp 同源：config 零值时
+// generateTokenWithType 兜底 24h，元数据若仍读 raw config 就会报 0——
+// 客户端凭它排刷新计划，0 直接破坏该协议（测试逮住的真缺陷）。
+accessExpire, refreshExpire := tm.cfg.TokenExpire, tm.cfg.RefreshExpire
+if accessExpire <= 0 {
+	accessExpire = time.Hour * 24
+}
+if refreshExpire <= 0 {
+	refreshExpire = time.Hour * 24
+}
+
+return &TokenPair{
+	AccessToken:  accessToken,
+	AccessJTI:    accessJTI,
+	RefreshToken: refreshToken,
+	ExpiresIn:    int64(accessExpire.Seconds()),
+	RefreshIn:    int64(refreshExpire.Seconds()),
+	OrgID:        orgID,
+}, nil
 }
 
 func (tm *TokenManager) generateTokenWithType(userID int64, userName string, orgID int64, tokenType TokenType, expire time.Duration) (string, string, error) {
