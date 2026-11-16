@@ -65,28 +65,28 @@ func TestExtendedClaims(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
-	cfg := Config{Secret: "s", Issuer: "i", Audience: "a", TokenExpire: time.Hour, RefreshExpire: 24 * time.Hour}
-	assert.Equal(t, "s", cfg.Secret)
+	cfg := Config{Secret: "config-echo-secret-32-bytes-x24ab", Issuer: "i", Audience: "a", TokenExpire: time.Hour, RefreshExpire: 24 * time.Hour}
+	assert.Equal(t, "config-echo-secret-32-bytes-x24ab", cfg.Secret)
 }
 
 func TestNewTokenManager_WithBlacklist(t *testing.T) {
 	cfg := testConfig()
 	bl := newMockBlacklist()
-	tm := NewTokenManager(cfg, bl)
+	tm := mustManager(t, cfg, bl)
 	assert.NotNil(t, tm)
 	assert.NotNil(t, tm.blacklist)
 }
 
 func TestNewTokenManager_NilBlacklist(t *testing.T) {
 	cfg := testConfig()
-	tm := NewTokenManager(cfg, nil)
+	tm := mustManager(t, cfg, nil)
 	assert.NotNil(t, tm)
 	assert.Nil(t, tm.blacklist)
 }
 
 func TestParseAccessToken_RevokedInBlacklist(t *testing.T) {
 	bl := newMockBlacklist()
-	tm := NewTokenManager(testConfig(), bl)
+	tm := mustManager(t, testConfig(), bl)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -104,7 +104,7 @@ func TestParseAccessToken_BlacklistCheckFails(t *testing.T) {
 		store:       make(map[string]time.Time),
 		containsErr: assert.AnError,
 	}
-	tm := NewTokenManager(testConfig(), bl)
+	tm := mustManager(t, testConfig(), bl)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -116,7 +116,7 @@ func TestParseAccessToken_BlacklistCheckFails(t *testing.T) {
 
 func TestRevokeToken_WithBlacklist(t *testing.T) {
 	bl := newMockBlacklist()
-	tm := NewTokenManager(testConfig(), bl)
+	tm := mustManager(t, testConfig(), bl)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -137,7 +137,7 @@ func TestRevokeToken_BlacklistAddFails(t *testing.T) {
 		store:  make(map[string]time.Time),
 		addErr: assert.AnError,
 	}
-	tm := NewTokenManager(testConfig(), bl)
+	tm := mustManager(t, testConfig(), bl)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -148,7 +148,7 @@ func TestRevokeToken_BlacklistAddFails(t *testing.T) {
 
 func TestRefreshAccessToken_BlacklistRotation(t *testing.T) {
 	bl := newMockBlacklist()
-	tm := NewTokenManager(testConfig(), bl)
+	tm := mustManager(t, testConfig(), bl)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -165,7 +165,7 @@ func TestRefreshAccessToken_BlacklistRotation(t *testing.T) {
 
 func TestRefreshAccessToken_RevokedRefreshToken(t *testing.T) {
 	bl := newMockBlacklist()
-	tm := NewTokenManager(testConfig(), bl)
+	tm := mustManager(t, testConfig(), bl)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -183,7 +183,7 @@ func TestRefreshAccessToken_BlacklistCheckFails(t *testing.T) {
 		store:       make(map[string]time.Time),
 		containsErr: assert.AnError,
 	}
-	tm := NewTokenManager(testConfig(), bl)
+	tm := mustManager(t, testConfig(), bl)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestRefreshAccessToken_BlacklistAddFails(t *testing.T) {
 		store:  make(map[string]time.Time),
 		addErr: assert.AnError,
 	}
-	tm := NewTokenManager(testConfig(), bl)
+	tm := mustManager(t, testConfig(), bl)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)

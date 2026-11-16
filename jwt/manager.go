@@ -55,18 +55,37 @@ type Blacklist interface {
 	Contains(ctx context.Context, jti string) (bool, error)
 }
 
+// AtomicBlacklist 是 Blacklist 的可选原子扩展：把「查在黑 + 入黑」折叠为
+// 一次原子操作。刷新轮换走 Contains→AddToken 两步存在 check-then-act
+// 竞态——同一 refresh token 并发刷两次可双双通过，被盗 token 的重用检测
+// 完全失效。实现方支持本接口时 TokenManager 自动走原子路径。
+type AtomicBlacklist interface {
+	Blacklist
+	// AddIfAbsent 原子地把 jti 入黑：首次调用返回 absent=true（本调用
+	// 完成占位，允许轮换），jti 已在黑时返回 absent=false（判定重放）。
+	AddIfAbsent(ctx context.Context, jti string, expiresAt time.Time) (absent bool, err error)
+}
+
+// minSecretLen 是 HS256 签名密钥的下限（256 bit）：HMAC 密钥短于摘要
+// 输出长度会实质削弱强度，空密钥甚至能产出合法过验签的 token。
+const minSecretLen = 32
+
 // TokenManager manages JWT token lifecycle with injected config and optional blacklist.
 type TokenManager struct {
 	cfg       Config
 	blacklist Blacklist
 }
 
-// NewTokenManager creates a new TokenManager with the given config and optional blacklist.
-func NewTokenManager(cfg Config, blacklist Blacklist) *TokenManager {
+// NewTokenManager creates a new TokenManager with the given config and
+// optional blacklist. cfg.Secret must be at least 32 bytes (HS256 minimum).
+func NewTokenManager(cfg Config, blacklist Blacklist) (*TokenManager, error) {
+	if len(cfg.Secret) < minSecretLen {
+		return nil, fmt.Errorf("jwt secret must be at least %d bytes (got %d)", minSecretLen, len(cfg.Secret))
+	}
 	return &TokenManager{
 		cfg:       cfg,
 		blacklist: blacklist,
-	}
+	}, nil
 }
 
 // GenerateTokenPair generates an access and refresh token pair without an org
@@ -89,25 +108,25 @@ func (tm *TokenManager) GenerateTokenPairInOrg(ctx context.Context, userID int64
 		return nil, fmt.Errorf("generate refresh token: %w", err)
 	}
 
-// TokenPair 有效期元数据与 token 内嵌 exp 同源：config 零值时
-// generateTokenWithType 兜底 24h，元数据若仍读 raw config 就会报 0——
-// 客户端凭它排刷新计划，0 直接破坏该协议（测试逮住的真缺陷）。
-accessExpire, refreshExpire := tm.cfg.TokenExpire, tm.cfg.RefreshExpire
-if accessExpire <= 0 {
-	accessExpire = time.Hour * 24
-}
-if refreshExpire <= 0 {
-	refreshExpire = time.Hour * 24
-}
+	// TokenPair 有效期元数据与 token 内嵌 exp 同源：config 零值时
+	// generateTokenWithType 兜底 24h，元数据若仍读 raw config 就会报 0——
+	// 客户端凭它排刷新计划，0 直接破坏该协议（测试逮住的真缺陷）。
+	accessExpire, refreshExpire := tm.cfg.TokenExpire, tm.cfg.RefreshExpire
+	if accessExpire <= 0 {
+		accessExpire = time.Hour * 24
+	}
+	if refreshExpire <= 0 {
+		refreshExpire = time.Hour * 24
+	}
 
-return &TokenPair{
-	AccessToken:  accessToken,
-	AccessJTI:    accessJTI,
-	RefreshToken: refreshToken,
-	ExpiresIn:    int64(accessExpire.Seconds()),
-	RefreshIn:    int64(refreshExpire.Seconds()),
-	OrgID:        orgID,
-}, nil
+	return &TokenPair{
+		AccessToken:  accessToken,
+		AccessJTI:    accessJTI,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int64(accessExpire.Seconds()),
+		RefreshIn:    int64(refreshExpire.Seconds()),
+		OrgID:        orgID,
+	}, nil
 }
 
 func (tm *TokenManager) generateTokenWithType(userID int64, userName string, orgID int64, tokenType TokenType, expire time.Duration) (string, string, error) {
@@ -116,6 +135,9 @@ func (tm *TokenManager) generateTokenWithType(userID int64, userName string, org
 	}
 
 	jti := GenerateJTI()
+	// exp/nbf/iat 取同一 now：三次 time.Now() 之间有微秒级漂移，可能让
+	// nbf 晚于 iat 的极端对不齐（同一时间基线是协议要求）。
+	now := time.Now()
 	claims := ExtendedClaims{
 		UserID:    userID,
 		OrgID:     orgID,
@@ -123,9 +145,9 @@ func (tm *TokenManager) generateTokenWithType(userID int64, userName string, org
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    tm.cfg.Issuer,
 			Audience:  jwt.ClaimStrings{tm.cfg.Audience},
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expire)),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(expire)),
+			NotBefore: jwt.NewNumericDate(now),
+			IssuedAt:  jwt.NewNumericDate(now),
 			Subject:   userName,
 			ID:        jti,
 		},
@@ -183,6 +205,10 @@ func (tm *TokenManager) ParseRefreshToken(tokenStr string) (*ExtendedClaims, err
 }
 
 // RefreshAccessToken uses a refresh token to generate a new token pair.
+// The old refresh token is revoked as part of rotation: blacklists exposing
+// the AtomicBlacklist extension claim the jti atomically, so a concurrent
+// replay of the same refresh token deterministically loses the race and is
+// rejected — replay detection depends on the second refresh failing.
 func (tm *TokenManager) RefreshAccessToken(ctx context.Context, refreshToken string) (*TokenPair, error) {
 	claims, err := tm.parseExtendedToken(refreshToken)
 	if err != nil {
@@ -194,18 +220,27 @@ func (tm *TokenManager) RefreshAccessToken(ctx context.Context, refreshToken str
 	}
 
 	if tm.blacklist != nil {
-		inBlacklist, err := tm.blacklist.Contains(ctx, claims.ID)
-		if err != nil {
-			return nil, fmt.Errorf("refresh token revocation check failed: %w", err)
-		}
-		if inBlacklist {
-			return nil, ErrTokenInBlacklist
-		}
-	}
-
-	if tm.blacklist != nil {
-		if err := tm.blacklist.AddToken(ctx, claims.ID, claims.ExpiresAt.Time); err != nil {
-			return nil, fmt.Errorf("failed to blacklist old refresh token: %w", err)
+		if atomicBL, ok := tm.blacklist.(AtomicBlacklist); ok {
+			absent, claimErr := atomicBL.AddIfAbsent(ctx, claims.ID, claims.ExpiresAt.Time)
+			if claimErr != nil {
+				return nil, fmt.Errorf("refresh token revocation claim failed: %w", claimErr)
+			}
+			if !absent {
+				return nil, ErrTokenInBlacklist
+			}
+		} else {
+			// 降级路径：两步 Contains→AddToken 非原子，并发重放窗口仍在
+			// （实现 AtomicBlacklist 可消除；见 AtomicBlacklist 注释）。
+			inBlacklist, checkErr := tm.blacklist.Contains(ctx, claims.ID)
+			if checkErr != nil {
+				return nil, fmt.Errorf("refresh token revocation check failed: %w", checkErr)
+			}
+			if inBlacklist {
+				return nil, ErrTokenInBlacklist
+			}
+			if err := tm.blacklist.AddToken(ctx, claims.ID, claims.ExpiresAt.Time); err != nil {
+				return nil, fmt.Errorf("failed to blacklist old refresh token: %w", err)
+			}
 		}
 	}
 

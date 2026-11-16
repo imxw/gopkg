@@ -23,7 +23,7 @@ func testConfig() Config {
 }
 
 func TestGenerateTokenPair(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 	assert.NotEmpty(t, pair.AccessToken)
@@ -34,7 +34,7 @@ func TestGenerateTokenPair(t *testing.T) {
 }
 
 func TestGenerateTokenPair_DifferentUsers(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair1, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 	pair2, err := tm.GenerateTokenPair(context.Background(), 2, "user")
@@ -43,7 +43,7 @@ func TestGenerateTokenPair_DifferentUsers(t *testing.T) {
 }
 
 func TestParseAccessToken_Valid(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
@@ -57,7 +57,7 @@ func TestParseAccessToken_Valid(t *testing.T) {
 }
 
 func TestParseAccessToken_EmptyToken(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	_, err := tm.ParseAccessToken(context.Background(), "")
 	assert.Error(t, err)
 }
@@ -67,8 +67,8 @@ func TestParseAccessToken_WrongSecret(t *testing.T) {
 	cfg2 := testConfig()
 	cfg2.Secret = "different-secret-key-at-least-32-bytes-long"
 
-	tm1 := NewTokenManager(cfg1, nil)
-	tm2 := NewTokenManager(cfg2, nil)
+	tm1 := mustManager(t, cfg1, nil)
+	tm2 := mustManager(t, cfg2, nil)
 
 	pair, err := tm1.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -78,7 +78,7 @@ func TestParseAccessToken_WrongSecret(t *testing.T) {
 }
 
 func TestParseAccessToken_RefreshTokenRejected(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
@@ -88,7 +88,7 @@ func TestParseAccessToken_RefreshTokenRejected(t *testing.T) {
 
 func TestParseAccessToken_ExpiredToken(t *testing.T) {
 	cfg := testConfig()
-	tm := NewTokenManager(cfg, nil)
+	tm := mustManager(t, cfg, nil)
 
 	// Manually build a token that expired in the past
 	claims := ExtendedClaims{
@@ -113,7 +113,7 @@ func TestParseAccessToken_ExpiredToken(t *testing.T) {
 
 func TestParseAccessToken_WrongSigningMethod(t *testing.T) {
 	cfg := testConfig()
-	tm := NewTokenManager(cfg, nil)
+	tm := mustManager(t, cfg, nil)
 
 	// Manually craft a JWT with "none" algorithm to bypass HMAC check
 	claims := ExtendedClaims{
@@ -131,7 +131,7 @@ func TestParseAccessToken_WrongSigningMethod(t *testing.T) {
 }
 
 func TestParseAccessToken_TamperedToken(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
@@ -140,7 +140,7 @@ func TestParseAccessToken_TamperedToken(t *testing.T) {
 }
 
 func TestRefreshAccessToken_Valid(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
@@ -152,7 +152,7 @@ func TestRefreshAccessToken_Valid(t *testing.T) {
 }
 
 func TestRefreshAccessToken_WithAccessToken(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
@@ -161,7 +161,7 @@ func TestRefreshAccessToken_WithAccessToken(t *testing.T) {
 }
 
 func TestRevokeToken_NoBlacklist(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
 
@@ -170,7 +170,7 @@ func TestRevokeToken_NoBlacklist(t *testing.T) {
 }
 
 func TestRevokeToken_EmptyToken(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	err := tm.RevokeToken(context.Background(), "")
 	assert.Error(t, err)
 }
@@ -186,7 +186,7 @@ func TestGenerateTokenPair_DefaultExpiry(t *testing.T) {
 	cfg := testConfig()
 	cfg.TokenExpire = 0
 	cfg.RefreshExpire = 0
-	tm := NewTokenManager(cfg, nil)
+	tm := mustManager(t, cfg, nil)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	require.NoError(t, err)
@@ -199,7 +199,7 @@ func TestGenerateTokenPair_DefaultExpiry(t *testing.T) {
 }
 
 func TestGenerateTokenPairInOrg_ClaimsRoundTrip(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 
 	pair, err := tm.GenerateTokenPairInOrg(context.Background(), 7, "zhang", 2)
 	if err != nil {
@@ -229,7 +229,7 @@ func TestGenerateTokenPairInOrg_ClaimsRoundTrip(t *testing.T) {
 }
 
 func TestGenerateTokenPair_OmitsOrgClaim(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 
 	pair, err := tm.GenerateTokenPair(context.Background(), 1, "admin")
 	if err != nil {
@@ -242,4 +242,12 @@ func TestGenerateTokenPair_OmitsOrgClaim(t *testing.T) {
 	if claims.OrgID != 0 {
 		t.Fatalf("expected orgID 0 (claim omitted), got %d", claims.OrgID)
 	}
+}
+
+// mustManager 测试助手：新签名（带 error）的断言折叠。
+func mustManager(t *testing.T, cfg Config, bl Blacklist) *TokenManager {
+	t.Helper()
+	tm, err := NewTokenManager(cfg, bl)
+	require.NoError(t, err)
+	return tm
 }

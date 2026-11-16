@@ -10,7 +10,7 @@ import (
 // 合法 refresh 通过）、GenerateTokenPair 语法糖腿、RefreshExpire 缺省。
 
 func TestParseRefreshToken_Valid(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 7, "alice")
 	if err != nil {
 		t.Fatal(err)
@@ -25,7 +25,7 @@ func TestParseRefreshToken_Valid(t *testing.T) {
 }
 
 func TestParseRefreshToken_AccessTokenRejected(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 7, "alice")
 	if err != nil {
 		t.Fatal(err)
@@ -37,7 +37,7 @@ func TestParseRefreshToken_AccessTokenRejected(t *testing.T) {
 }
 
 func TestParseRefreshToken_Empty(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	if _, err := tm.ParseRefreshToken(""); err == nil {
 		t.Fatal("empty token must be rejected")
 	}
@@ -45,7 +45,7 @@ func TestParseRefreshToken_Empty(t *testing.T) {
 
 // GenerateTokenPair = GenerateTokenPairInOrg(0) 的语法糖：OrgID 不出线。
 func TestGenerateTokenPair_NoOrg(t *testing.T) {
-	tm := NewTokenManager(testConfig(), nil)
+	tm := mustManager(t, testConfig(), nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 7, "alice")
 	if err != nil {
 		t.Fatal(err)
@@ -66,7 +66,7 @@ func TestGenerateTokenPair_NoOrg(t *testing.T) {
 func TestGenerateTokenPair_DefaultRefreshExpiry(t *testing.T) {
 	cfg := testConfig()
 	cfg.RefreshExpire = 0
-	tm := NewTokenManager(cfg, nil)
+	tm := mustManager(t, cfg, nil)
 	pair, err := tm.GenerateTokenPair(context.Background(), 7, "alice")
 	if err != nil {
 		t.Fatal(err)
