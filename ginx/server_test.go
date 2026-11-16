@@ -80,3 +80,25 @@ func TestSecurityHeaders_Disable(t *testing.T) {
 	assert.Empty(t, w.Header().Get("Content-Security-Policy"),
 		"自服务 HTML 的消费方可显式退出（退出后自行承担响应头策略）")
 }
+
+// Mode 白名单归一：空值/未知值安全回落 release，不静默留在 debug。
+func TestNewEngine_ModeWhitelist(t *testing.T) {
+	cases := []struct {
+		mode string
+		want string
+	}{
+		{"", gin.ReleaseMode},
+		{"release", gin.ReleaseMode},
+		{"Release", gin.ReleaseMode},   // 大小写归一
+		{" release ", gin.ReleaseMode}, // 空白归一
+		{"debug", gin.DebugMode},
+		{"test", gin.TestMode},
+		{"relese", gin.ReleaseMode}, // 未知值回落 release（安全默认）
+	}
+	for _, tc := range cases {
+		cfg := DefaultEngineConfig()
+		cfg.Mode = tc.mode
+		NewEngine(cfg)
+		assert.Equal(t, tc.want, gin.Mode(), "Mode %q 归一结果", tc.mode)
+	}
+}

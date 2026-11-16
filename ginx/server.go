@@ -1,10 +1,13 @@
 package ginx
 
 import (
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
+	"github.com/imxw/gopkg/logger"
 )
 
 // EngineConfig holds Gin engine configuration without depending on project Config.
@@ -46,8 +49,21 @@ func DefaultEngineConfig() EngineConfig {
 // NewEngine creates a Gin engine with global middleware (no routes).
 // SecurityHeaders 排在链首：限流拒绝、CORS 拒绝、recovery 500 等一切
 // 短路路径同样落安全头（被拒响应恰是最可能被利用的注入面）。
+//
+// Mode 白名单归一（大小写不敏感）：release（含空值，安全默认）→ release /
+// debug / test；未知值告警后回落 release——此前只精确识别 "release"，
+// 拼错或大小写差异会静默留在 gin debug 模式（启动横幅刷屏 + 性能损耗）。
 func NewEngine(cfg EngineConfig) *gin.Engine {
-	if cfg.Mode == "release" {
+	switch mode := strings.ToLower(strings.TrimSpace(cfg.Mode)); mode {
+	case "", "release":
+		gin.SetMode(gin.ReleaseMode)
+	case "debug":
+		gin.SetMode(gin.DebugMode)
+	case "test":
+		gin.SetMode(gin.TestMode)
+	default:
+		logger.Warnw("ginx: unknown EngineConfig.Mode, falling back to release",
+			logger.StringField("mode", cfg.Mode))
 		gin.SetMode(gin.ReleaseMode)
 	}
 
