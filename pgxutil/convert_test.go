@@ -97,3 +97,41 @@ func TestUUIDRoundTrip(t *testing.T) {
 	assert.Equal(t, id, *back)
 	assert.Nil(t, FromPgUUIDToPtr(pgtype.UUID{}))
 }
+
+// ---- v0.12 变体 ----
+
+func TestToPgTextNonEmpty(t *testing.T) {
+	assert.Equal(t, pgtype.Text{String: "x", Valid: true}, ToPgTextNonEmpty("x"))
+	assert.Equal(t, pgtype.Text{Valid: false}, ToPgTextNonEmpty(""))
+}
+
+func TestToPgTimestamptz_NonPtr(t *testing.T) {
+	now := time.Now()
+	assert.Equal(t, pgtype.Timestamptz{Time: now, Valid: true}, ToPgTimestamptz(now))
+	assert.Equal(t, pgtype.Timestamptz{Valid: false}, ToPgTimestamptz(time.Time{}))
+}
+
+func TestFromPgPtrVariants(t *testing.T) {
+	s := "v"
+	assert.Equal(t, &s, FromPgTextPtr(pgtype.Text{String: "v", Valid: true}))
+	assert.Nil(t, FromPgTextPtr(pgtype.Text{}))
+
+	i := int32(3)
+	assert.Equal(t, &i, FromPgInt4Ptr(pgtype.Int4{Int32: 3, Valid: true}))
+	assert.Nil(t, FromPgInt4Ptr(pgtype.Int4{}))
+
+	b := true
+	assert.Equal(t, &b, FromPgBoolPtr(pgtype.Bool{Bool: true, Valid: true}))
+	assert.Nil(t, FromPgBoolPtr(pgtype.Bool{}))
+}
+
+func TestToPgUUIDChecked(t *testing.T) {
+	v, err := ToPgUUIDChecked("550e8400-e29b-41d4-a716-446655440000")
+	require.NoError(t, err)
+	assert.True(t, v.Valid)
+
+	_, err = ToPgUUIDChecked("not-a-uuid")
+	require.Error(t, err, "非法输入不再静默变 NULL")
+	_, err = ToPgUUIDChecked("")
+	require.Error(t, err)
+}

@@ -2,6 +2,7 @@
 package pgxutil
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -187,4 +188,53 @@ func FromPgUUIDToPtr(u pgtype.UUID) *uuid.UUID {
 	}
 	id := uuid.UUID(u.Bytes)
 	return &id
+}
+
+// ToPgTextNonEmpty converts a string to pgtype.Text, mapping empty string to
+// NULL — the `Valid: s != ""` idiom (upsert semantics where '' is not a real
+// value). Unlike ToPgText (which maps "" to NULL too but is intended as the
+// plain variant), this exists so the call site states the intent explicitly.
+func ToPgTextNonEmpty(s string) pgtype.Text {
+	return pgtype.Text{String: s, Valid: s != ""}
+}
+
+// ToPgTimestamptz converts a time.Time to pgtype.Timestamptz (non-pointer;
+// zero time maps to Invalid — use the Ptr variant to preserve explicit nils).
+func ToPgTimestamptz(t time.Time) pgtype.Timestamptz {
+	return pgtype.Timestamptz{Time: t, Valid: !t.IsZero()}
+}
+
+// FromPgTextPtr converts pgtype.Text to *string (nil for NULL).
+func FromPgTextPtr(v pgtype.Text) *string {
+	if !v.Valid {
+		return nil
+	}
+	return &v.String
+}
+
+// FromPgInt4Ptr converts pgtype.Int4 to *int32 (nil for Invalid).
+func FromPgInt4Ptr(v pgtype.Int4) *int32 {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Int32
+}
+
+// FromPgBoolPtr converts pgtype.Bool to *bool (nil for Invalid).
+func FromPgBoolPtr(v pgtype.Bool) *bool {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Bool
+}
+
+// ToPgUUIDChecked parses s into pgtype.UUID, returning the parse error
+// instead of silently mapping invalid input to NULL (ToPgUUID's lenient
+// contract). Use wherever the source of s is untrusted input.
+func ToPgUUIDChecked(s string) (pgtype.UUID, error) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return pgtype.UUID{}, fmt.Errorf("parse uuid %q: %w", s, err)
+	}
+	return pgtype.UUID{Bytes: id, Valid: true}, nil
 }
