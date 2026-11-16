@@ -26,7 +26,6 @@ go get github.com/imxw/gopkg@latest
 | `gosafe` | panic 安全 goroutine（带命名标签落日志） | `gosafe.Go` / `gosafe.GoNamed` |
 | `pgxutil` | pgtype ↔ Go 值转换（nil 安全、往返全覆盖）+ pgx 错误 → 业务错误翻译 | `pgxutil.ToPgText` / `pgxutil.MapPgxError` |
 | `validatorx` | 中文校验消息 + gin binding 适配（import 即替换全局 validator，见包内 WARNING） | `validatorx.ReplaceGinValidator` |
-| `statemachine` | 内存态转换合法性查询器（纯查询，无 hook/持久化） | `statemachine.NewEngine` |
 
 ## 快速上手
 
