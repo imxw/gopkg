@@ -77,9 +77,17 @@ func AccessLog() gin.HandlerFunc {
 
 		costMs := time.Since(startTime).Milliseconds()
 		httpCode := c.Writer.Status()
+		// route 是路由模板（c.FullPath，c.Next() 后路由已匹配）：/hosts/:id
+		// 这类 ID 入径路径按模板聚合，日志基数不再随资源 ID 线性膨胀；
+		// 未匹配（404 直落）时回退实际 path。
+		route := c.FullPath()
+		if route == "" {
+			route = path
+		}
 		logFields := []interface{}{
 			logger.StringField("method", method),
 			logger.StringField("path", path),
+			logger.StringField("route", route),
 			logger.StringField("query", query),
 			logger.StringField("client_ip", clientIP),
 			logger.StringField("user_agent", userAgent),
