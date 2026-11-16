@@ -191,7 +191,7 @@ func FromPgUUIDToPtr(u pgtype.UUID) *uuid.UUID {
 }
 
 // ToPgTextNonEmpty converts a string to pgtype.Text, mapping empty string to
-// NULL — the `Valid: s != ""` idiom (upsert semantics where ” is not a real
+// NULL — the `Valid: s != ""` idiom (upsert semantics where "" is not a real
 // value). Unlike ToPgText (which maps "" to NULL too but is intended as the
 // plain variant), this exists so the call site states the intent explicitly.
 func ToPgTextNonEmpty(s string) pgtype.Text {
