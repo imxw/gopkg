@@ -41,13 +41,13 @@ func TestWithFields_ValidZapField(t *testing.T) {
 	assert.NotEqual(t, ctx, newCtx)
 }
 
-func TestWithFields_NonZapFieldIgnored(t *testing.T) {
+func TestWithFields_MultipleFields(t *testing.T) {
 	testLogger(t)
 	defer resetLoggerState()
 
 	ctx := context.Background()
-	// Non-zap.Field values should be silently dropped
-	newCtx := WithFields(ctx, "not a zap field", 123, StringField("valid", "yes"))
+	// v0.12 收窄 ...zap.Field：非 Field 值在编译期报错（不再静默吞）。
+	newCtx := WithFields(ctx, StringField("valid", "yes"), IntField("n", 3))
 	assert.NotNil(t, newCtx)
 }
 
