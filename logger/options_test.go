@@ -150,14 +150,45 @@ func TestGetLevelEncoder(t *testing.T) {
 func encoderConfig(opts Options) zapcore.EncoderConfig {
 	return zapcore.EncoderConfig{
 		TimeKey:        "time",
-		LevelKey:      "level",
-		NameKey:       "logger",
-		CallerKey:     "caller",
-		MessageKey:    "msg",
-		StacktraceKey: "stacktrace",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "msg",
+		StacktraceKey:  "stacktrace",
 		EncodeTime:     zapcore.ISO8601TimeEncoder,
 		EncodeLevel:    getLevelEncoder(opts.Encoding),
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 		EncodeDuration: zapcore.MillisDurationEncoder,
 	}
+}
+
+// WithLevel 显式级别：development/test 的环境兜底不再覆盖（此前
+// 显式 Info + development 被无声改写为 Debug）。
+func TestAdaptEnv_ExplicitLevelRespected(t *testing.T) {
+	opts := DefaultOptions()
+	WithLevel(zapcore.InfoLevel)(&opts)
+	opts.Env = "development"
+	got := adaptEnv(opts)
+	assert.Equal(t, zapcore.InfoLevel, got.Level)
+	assert.True(t, got.levelExplicit)
+
+	opts2 := DefaultOptions()
+	WithLevel(zapcore.WarnLevel)(&opts2)
+	opts2.Env = "test"
+	got2 := adaptEnv(opts2)
+	assert.Equal(t, zapcore.WarnLevel, got2.Level)
+}
+
+// 未显式设置时环境兜底照旧（development→Debug / test→Error）。
+func TestAdaptEnv_ImplicitLevelStillAdapted(t *testing.T) {
+	opts := DefaultOptions()
+	opts.Env = "development"
+	assert.False(t, opts.levelExplicit)
+	got := adaptEnv(opts)
+	assert.Equal(t, zapcore.DebugLevel, got.Level)
+
+	opts2 := DefaultOptions()
+	opts2.Env = "test"
+	got2 := adaptEnv(opts2)
+	assert.Equal(t, zapcore.ErrorLevel, got2.Level)
 }
