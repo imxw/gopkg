@@ -35,6 +35,16 @@ func Has(key string) bool {
 	return ok
 }
 
+// GetDefault returns the value of key, or def if unset OR empty — the
+// caller-owned-fallback shape (strconv family helpers share the contract:
+// invalid/absent both fall back).
+func GetDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
 // GetInt returns the int value of key, or def if unset/invalid.
 func GetInt(key string, def int) int {
 	raw := os.Getenv(key)

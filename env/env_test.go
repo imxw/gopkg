@@ -83,3 +83,11 @@ func TestMust(t *testing.T) {
 		Must("ENV_PKG_MISSING_6")
 	})
 }
+
+func TestGetDefault(t *testing.T) {
+	assert.Equal(t, "d", GetDefault("ENV_PKG_MISSING_7", "d"))
+	t.Setenv("ENV_PKG_DEF", "v")
+	assert.Equal(t, "v", GetDefault("ENV_PKG_DEF", "d"))
+	t.Setenv("ENV_PKG_EMPTY", "")
+	assert.Equal(t, "d", GetDefault("ENV_PKG_EMPTY", "d"), "空串视同未设（getEnv 家族语义）")
+}
