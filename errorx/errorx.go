@@ -87,13 +87,14 @@ func (e *ErrorX) WithTraceID(traceID string) *ErrorX {
 }
 
 func (e *ErrorX) Data() map[string]any {
-	data := map[string]any{
-		"code": e.BusinessCode,
-		"name": e.Name,
-		"msg":  e.Message,
-		"data": struct{}{},
-	}
+	// Extra 先落、信封键后写：WithExtra("code", …) 这类自定义键不得
+	// 覆盖真实业务码/名称/消息——信封键是协议约定，优先级恒高于载荷。
+	data := make(map[string]any, len(e.Extra)+4)
 	maps.Copy(data, e.Extra)
+	data["code"] = e.BusinessCode
+	data["name"] = e.Name
+	data["msg"] = e.Message
+	data["data"] = struct{}{}
 	return data
 }
 

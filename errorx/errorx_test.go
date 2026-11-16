@@ -88,6 +88,20 @@ func TestData_WithExtra(t *testing.T) {
 	assert.Equal(t, "name", data["field"])
 }
 
+// Extra 与信封键同名时不得覆盖真实业务码/名称/消息——信封键是协议约定。
+func TestData_ExtraCannotOverrideEnvelopeKeys(t *testing.T) {
+	e := New(1001, 400, "BAD_REQUEST", "bad request").
+		WithExtra("code", 999).
+		WithExtra("name", "HIJACKED").
+		WithExtra("msg", "hijacked").
+		WithExtra("data", "hijacked")
+	data := e.Data()
+	assert.Equal(t, 1001, data["code"])
+	assert.Equal(t, "BAD_REQUEST", data["name"])
+	assert.Equal(t, "bad request", data["msg"])
+	assert.Equal(t, struct{}{}, data["data"])
+}
+
 func TestFromError_Nil(t *testing.T) {
 	assert.Nil(t, FromError(nil))
 }
