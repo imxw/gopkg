@@ -4,15 +4,23 @@ import (
 	"context"
 )
 
-// WithUserID injects the user ID into context.
+// WithUserID injects the user ID into context. Zero/negative IDs are
+// skipped (consistent with WithRequestID/WithUserName: an invalid value is
+// indistinguishable from "not injected" on read — use HasUserID for the
+// explicit check instead of a silent zero).
 func WithUserID(ctx context.Context, userID int64) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	if userID <= 0 {
+		return ctx
 	}
 	return context.WithValue(ctx, userIDKey, userID)
 }
 
 // UserID extracts the user ID from context. Returns 0 if not present.
+// Prefer HasUserID + UserID, or ginx.RequireUserID at the HTTP boundary,
+// when zero would silently flow into domain calls.
 func UserID(ctx context.Context) int64 {
 	if ctx == nil {
 		return 0
@@ -22,6 +30,12 @@ func UserID(ctx context.Context) int64 {
 		return 0
 	}
 	return userID
+}
+
+// HasUserID reports whether a valid (positive) user ID is present —
+// the explicit "authenticated?" check that a silent 0 cannot express.
+func HasUserID(ctx context.Context) bool {
+	return UserID(ctx) > 0
 }
 
 // WithUserName injects the user name into context.
@@ -47,10 +61,14 @@ func UserName(ctx context.Context) string {
 	return userName
 }
 
-// WithOrgID injects the organization ID into context (multi-org session context).
+// WithOrgID injects the organization ID into context (multi-org session
+// context). Zero/negative IDs are skipped (same normalization as WithUserID).
 func WithOrgID(ctx context.Context, orgID int64) context.Context {
 	if ctx == nil {
 		ctx = context.Background()
+	}
+	if orgID <= 0 {
+		return ctx
 	}
 	return context.WithValue(ctx, orgIDKey, orgID)
 }
@@ -67,4 +85,9 @@ func OrgID(ctx context.Context) int64 {
 		return 0
 	}
 	return orgID
+}
+
+// HasOrgID reports whether a valid (positive) org ID is present.
+func HasOrgID(ctx context.Context) bool {
+	return OrgID(ctx) > 0
 }
