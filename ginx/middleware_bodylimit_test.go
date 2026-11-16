@@ -30,7 +30,9 @@ func TestBodyLimit_RejectsByContentLength(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/upload", strings.NewReader(strings.Repeat("x", 32)))
 	r.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code, "Content-Length 超限直接 400")
+	assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code, "Content-Length 超限出 413（RFC 9110 语义）")
+	// 错误腿 NAME：客户端可按 CONTENT_TOO_LARGE 分派。
+	assert.Contains(t, w.Body.String(), "CONTENT_TOO_LARGE")
 }
 
 func TestBodyLimit_ChunkedBodyCappedByMaxBytesReader(t *testing.T) {

@@ -16,7 +16,9 @@ func BodyLimit(maxBytes int64) gin.HandlerFunc {
 	}
 	return func(c *gin.Context) {
 		if c.Request.ContentLength > maxBytes {
-			Error(c, errorx.ErrInvalidArgument.WithMessage("请求体过大"))
+			// 413（RFC 9110 payload too large）——此前借用 ErrInvalidArgument
+			// 出 400，客户端无法区分「体太大」与「参数错」。
+			Error(c, errorx.ErrContentTooLarge)
 			c.Abort()
 			return
 		}

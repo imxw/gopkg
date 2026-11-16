@@ -20,6 +20,7 @@ const (
 	CodeNotFound        = 1004 // 资源未找到
 	CodeConflict        = 1009 // 操作冲突
 	CodeTooManyRequests = 1029 // 请求过于频繁
+	CodeContentTooLarge = 1013 // 请求体超限
 	CodeInternal        = 1050 // 内部服务器错误
 	CodeTokenExpired    = 2000 // Token已过期
 	CodeTokenInvalid    = 2001 // Token无效
@@ -88,6 +89,15 @@ var (
 		Status:       http.StatusTooManyRequests,
 		Name:         "TOO_MANY_REQUESTS",
 		Message:      "Too many requests. Please try again later.",
+	}
+
+	// ErrContentTooLarge 请求体超限（HTTP 413 语义——此前 BodyLimit 借用
+	// ErrInvalidArgument 出 400，与 RFC 9110 语义相悖）
+	ErrContentTooLarge = &ErrorX{
+		BusinessCode: CodeContentTooLarge,
+		Status:       http.StatusRequestEntityTooLarge,
+		Name:         "CONTENT_TOO_LARGE",
+		Message:      "Request body exceeds the allowed size.",
 	}
 
 	// ErrTokenExpired Token已过期
