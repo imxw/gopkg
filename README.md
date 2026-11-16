@@ -26,6 +26,8 @@ go get github.com/imxw/gopkg@latest
 | `gosafe` | panic 安全 goroutine（带命名标签落日志） | `gosafe.Go` / `gosafe.GoNamed` |
 | `pgxutil` | pgtype ↔ Go 值转换（nil 安全、往返全覆盖）+ pgx 错误 → 业务错误翻译 | `pgxutil.ToPgText` / `pgxutil.MapPgxError` |
 | `validatorx` | 中文校验消息 + gin binding 适配（import 即替换全局 validator，见包内 WARNING） | `validatorx.ReplaceGinValidator` |
+| `retry` | 重试策略（cenkalti/backoff v5 包装：默认指数 full-jitter、预算上限、Notify 日志钩子） | `retry.Do` / `retry.LogNotify` |
+| `env` | 环境变量配置：struct tag 解析（caarlos0/env v11 re-export）+ 类型化便捷读取 | `env.Parse` / `env.GetInt` / `env.Must` |
 
 ## 快速上手
 
