@@ -50,10 +50,10 @@ func TestRequestID_NoInboundHeaderGenerates(t *testing.T) {
 
 func TestRequestID_IllegalInboundHeaderRejected(t *testing.T) {
 	for _, bad := range []string{
-		"short",                             // <8
-		strings.Repeat("a", 129),            // >128
-		"has space-inside-1234",             // 非法字符
-		"injection\u202e-123456",            // 控制字符
+		"short",                  // <8
+		strings.Repeat("a", 129), // >128
+		"has space-inside-1234",  // 非法字符
+		"injection\u202e-123456", // 控制字符
 	} {
 		_, echoed := requestIDRoundTrip(t, bad)
 		assert.Len(t, echoed, 36, "非法入站头 %q 须拒绝并生成 UUID", bad)
@@ -99,10 +99,10 @@ func TestError_PlainOmitsDetails(t *testing.T) {
 
 func TestConvenienceHelpers_EmptyMsgKeepsDefault(t *testing.T) {
 	cases := []struct {
-		name      string
-		call      func(c *gin.Context)
-		wantMsg   string
-		wantCode  int
+		name     string
+		call     func(c *gin.Context)
+		wantMsg  string
+		wantCode int
 	}{
 		{"BadRequest", func(c *gin.Context) { BadRequest(c, "") }, "Argument verification failed", http.StatusBadRequest},
 		{"InternalError", func(c *gin.Context) { InternalError(c, "") }, "Internal server error", http.StatusInternalServerError},
