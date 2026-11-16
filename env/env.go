@@ -7,6 +7,7 @@ package env
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -97,6 +98,26 @@ func GetDuration(key string, def time.Duration) time.Duration {
 		return def
 	}
 	return d
+}
+
+// ParseEmptyAsUnset parses environment variables into v like Parse, with
+// one contract adjustment matching the Get/GetDefault family: an env var
+// SET to the empty string counts as UNSET (falls to envDefault). Deployments
+// commonly write `export FOO=` to "clear" a var — without this shim that
+// would feed "" into typed fields (int → boot error, string → clobbers
+// default). Invalid non-empty values still fail the parse (fail-fast),
+// which is the intended contrast with the silent-fallback getters.
+func ParseEmptyAsUnset(v interface{}) error {
+	environ := os.Environ()
+	m := make(map[string]string, len(environ))
+	for _, kv := range environ {
+		k, val, _ := strings.Cut(kv, "=")
+		if val == "" {
+			continue
+		}
+		m[k] = val
+	}
+	return env.ParseWithOptions(v, env.Options{Environment: m})
 }
 
 // Must returns the value of key; panics when unset or empty — for

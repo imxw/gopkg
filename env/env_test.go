@@ -91,3 +91,19 @@ func TestGetDefault(t *testing.T) {
 	t.Setenv("ENV_PKG_EMPTY", "")
 	assert.Equal(t, "d", GetDefault("ENV_PKG_EMPTY", "d"), "空串视同未设（getEnv 家族语义）")
 }
+
+// ParseEmptyAsUnset：空串视同未设（部署面 `export FOO=` 惯用法），非法
+// 非空值 fail-fast——与 Get/GetDefault 家族的静默回退形成有意对照。
+func TestParseEmptyAsUnset(t *testing.T) {
+	t.Setenv("PROBE_HOST", "")
+	t.Setenv("PROBE_PORT", "abc")
+	var p probe
+	err := ParseEmptyAsUnset(&p)
+	require.Error(t, err, "非法 int 值 fail-fast（不再静默回退）")
+
+	t.Setenv("PROBE_PORT", "15432")
+	var p2 probe
+	require.NoError(t, ParseEmptyAsUnset(&p2))
+	assert.Equal(t, "localhost", p2.Host, "空串 host 视同未设 → envDefault")
+	assert.Equal(t, 15432, p2.Port)
+}
