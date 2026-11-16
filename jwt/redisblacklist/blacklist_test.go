@@ -105,3 +105,36 @@ func TestNew_DefaultPrefix(t *testing.T) {
 		t.Fatalf("custom prefix = %q, want x", custom.prefix)
 	}
 }
+
+// AddIfAbsent（AtomicBlacklist）：首占返回 true，重复占位返回 false——
+// 刷新轮换的原子语义，重放判定依赖第二次占位失败。
+func TestBlacklist_AddIfAbsent(t *testing.T) {
+	ctx := context.Background()
+	tb, _ := newTestBlacklist(t)
+	expires := time.Now().Add(time.Hour)
+
+	absent, err := tb.AddIfAbsent(ctx, "jti-a", expires)
+	if err != nil {
+		t.Fatalf("first claim: %v", err)
+	}
+	if !absent {
+		t.Fatal("first claim must win")
+	}
+
+	absent, err = tb.AddIfAbsent(ctx, "jti-a", expires)
+	if err != nil {
+		t.Fatalf("replay claim: %v", err)
+	}
+	if absent {
+		t.Fatal("replay must lose the claim")
+	}
+
+	// 占位后 Contains 同步可见（同一 key 空间）。
+	contains, err := tb.Contains(ctx, "jti-a")
+	if err != nil {
+		t.Fatalf("contains: %v", err)
+	}
+	if !contains {
+		t.Fatal("claimed jti must be visible via Contains")
+	}
+}

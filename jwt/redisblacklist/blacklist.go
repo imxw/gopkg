@@ -13,12 +13,14 @@ import (
 
 // TokenBlacklist manages revoked tokens via Redis.
 type TokenBlacklist struct {
-	redis  *redis.Client
+	redis  redis.UniversalClient
 	prefix string
 }
 
 // New creates a new TokenBlacklist with the given Redis client and key prefix.
-func New(redisClient *redis.Client, prefix string) *TokenBlacklist {
+// Accepts redis.UniversalClient so single-node, Cluster and Sentinel
+// deployments all plug in.
+func New(redisClient redis.UniversalClient, prefix string) *TokenBlacklist {
 	if prefix == "" {
 		prefix = "token_blacklist"
 	}
@@ -51,6 +53,26 @@ func (tb *TokenBlacklist) AddToken(ctx context.Context, jti string, expiresAt ti
 	return nil
 }
 
+// AddIfAbsent 原子地把 jti 入黑（SET NX + TTL）：key 不存在时写入并返回
+// absent=true（本调用完成占位）；已存在返回 absent=false（判定重放）。
+// jwt.AtomicBlacklist 的 Redis 实现——刷新轮换经此消除 check-then-act 竞态。
+func (tb *TokenBlacklist) AddIfAbsent(ctx context.Context, jti string, expiresAt time.Time) (bool, error) {
+	if jti == "" {
+		return false, fmt.Errorf("jti cannot be empty")
+	}
+
+	// 已过期的 token 无锁定意义：视为可占位（轮换路径上解析层已先拒过期 token）。
+	if expiresAt.Before(time.Now()) {
+		return true, nil
+	}
+
+	claimed, err := tb.redis.SetNX(ctx, tb.blacklistKey(jti), "1", time.Until(expiresAt)).Result()
+	if err != nil {
+		return false, fmt.Errorf("failed to claim token blacklist entry: %w", err)
+	}
+	return claimed, nil
+}
+
 // Contains checks whether a token is in the blacklist.
 func (tb *TokenBlacklist) Contains(ctx context.Context, jti string) (bool, error) {
 	if jti == "" {
@@ -81,5 +103,9 @@ func (tb *TokenBlacklist) Remove(ctx context.Context, jti string) error {
 	return nil
 }
 
-// Compile-time check that TokenBlacklist satisfies jwt.Blacklist.
-var _ jwt.Blacklist = (*TokenBlacklist)(nil)
+// Compile-time checks that TokenBlacklist satisfies jwt.Blacklist and the
+// optional atomic rotation extension.
+var (
+	_ jwt.Blacklist       = (*TokenBlacklist)(nil)
+	_ jwt.AtomicBlacklist = (*TokenBlacklist)(nil)
+)
