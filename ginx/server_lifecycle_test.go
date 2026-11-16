@@ -1,6 +1,7 @@
 package ginx
 
 import (
+	"context"
 	"io"
 	"net"
 	"net/http"
@@ -102,5 +103,39 @@ func TestServe_HealthRouteEmpty_NoRoute(t *testing.T) {
 	case <-errCh:
 	case <-time.After(5 * time.Second):
 		t.Fatal("Serve 未在 5s 内响应 SIGTERM")
+	}
+}
+
+// 外部 ctx 模式（v0.12.1）：调用方自有信号 ctx——Serve 不重复注册信号，
+// ctx 取消即排水；ReadTimeout/WriteTimeout 透传 http.Server。
+func TestServe_ExternalContext(t *testing.T) {
+	addr := freePort(t)
+	engine := newTestEngine()
+	served := make(chan struct{})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	srvCfg := ServeConfig{
+		Addr:            addr,
+		ShutdownTimeout: 2 * time.Second,
+		HealthPath:      "/healthz",
+		ReadTimeout:     3 * time.Second,
+		WriteTimeout:    3 * time.Second,
+		Context:         ctx,
+		OnHealthy:       func() { close(served) },
+	}
+	errCh := make(chan error, 1)
+	go func() { errCh <- Serve(engine, srvCfg) }()
+
+	<-served
+	resp, err := http.Get("http://127.0.0.1" + addr + "/healthz")
+	require.NoError(t, err)
+	resp.Body.Close()
+
+	cancel() // 外部取消（替代信号）
+	select {
+	case err := <-errCh:
+		assert.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("外部 ctx 取消未触发排水")
 	}
 }

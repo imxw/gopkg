@@ -29,12 +29,22 @@ type ServeConfig struct {
 	// OnHealthy optional callback invoked right after listen succeeds
 	// (startup log stamp, post-start wiring).
 	OnHealthy func()
+	// ReadTimeout / WriteTimeout pass through to http.Server (0 = no
+	// deadline — production fronted by LBs usually sets both).
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	// Context overrides the built-in signal handling: Serve waits on this
+	// context instead of registering its own SIGINT/SIGTERM handler. Use
+	// when the caller already owns the process signal context (seeding,
+	// LISTEN workers sharing one NotifyContext). Caller keeps ownership of
+	// stop() cleanup.
+	Context context.Context
 }
 
 // Serve runs the engine with a standard graceful-shutdown lifecycle and
-// blocks until SIGINT/SIGTERM: listen → (onHealthy) → wait signal →
-// bounded Shutdown → return nil. This is the hand-rolled ~30-line idiom
-// every Gin service used to copy — now one call.
+// blocks until SIGINT/SIGTERM (or cfg.Context cancellation): listen →
+// (onHealthy) → wait → bounded Shutdown → return nil. This is the
+// hand-rolled ~30-line idiom every Gin service used to copy — now one call.
 //
 // Errors: listen failure (address busy, bad addr) returns the wrapped
 // error immediately; drain failure (Shutdown error) is returned after
@@ -50,14 +60,21 @@ func Serve(engine *gin.Engine, cfg ServeConfig) error {
 	}
 
 	srv := &http.Server{
-		Addr:    cfg.Addr,
-		Handler: engine,
+		Addr:         cfg.Addr,
+		Handler:      engine,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
 	}
 
-	// 通知型 ctx：首个 SIGINT/SIGTERM 即触发（二次信号走系统默认终止，
-	// 调试期可用 kill -9 强杀；不静默吞第二次信号是排障友好语义）。
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	// 生命周期 ctx：默认自注册 SIGINT/SIGTERM（首个信号即触发，二次信号
+	// 走系统默认终止——不静默吞第二次是排障友好语义）；cfg.Context 非 nil
+	// 时调用方自有信号 ctx，本函数不重复注册、不接管 stop（调用方清理）。
+	var stop func()
+	ctx := cfg.Context
+	if ctx == nil {
+		ctx, stop = signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer stop()
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -79,8 +96,11 @@ func Serve(engine *gin.Engine, cfg ServeConfig) error {
 		}
 		return nil // 竞态关闭（极小窗口），视为干净退出
 	case <-ctx.Done():
-		// 进入排水：先撤销信号注册（再次 Ctrl-C 走默认终止强杀）。
-		stop()
+		// 进入排水：先撤销信号注册（再次 Ctrl-C 走默认终止强杀）；
+		// 外部 ctx 时注册权在调用方，不动。
+		if stop != nil {
+			stop()
+		}
 	}
 
 	logger.Infow("shutdown signal received, draining",
