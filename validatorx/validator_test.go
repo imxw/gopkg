@@ -210,3 +210,17 @@ func TestValidationErrors_Error(t *testing.T) {
 	}
 }
 
+// 形如 `json:",omitempty"` 的 tag 会让 getFieldName 返回空串——
+// 旧实现 name[:1] 在此 panic（校验该结构体即进程崩溃）。
+func TestValidator_EmptyTagNameNoPanic(t *testing.T) {
+	type badTagStruct struct {
+		Value string `binding:"required" json:",omitempty"`
+		Other string `form:",min=1"`
+	}
+
+	assert.NotPanics(t, func() {
+		errs := GetValidator().Validate(&badTagStruct{})
+		// required 仍须生效：空串字段被拒。
+		assert.NotEmpty(t, errs)
+	})
+}

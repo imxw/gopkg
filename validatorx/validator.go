@@ -117,6 +117,11 @@ func newValidator() *Validator {
 			return ""
 		}
 		name := getFieldName(fld)
+		// 形如 `json:",omitempty"` 的 tag 首段为空串：name[:1] 会 panic。
+		// 回退空串交由 validator 使用 Go 字段名兜底（与 Anonymous 同路径）。
+		if name == "" {
+			return ""
+		}
 		return strings.ToLower(name[:1]) + name[1:]
 	})
 
