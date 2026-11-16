@@ -4,6 +4,8 @@ go 1.26.1
 
 require (
 	github.com/alicebob/miniredis/v2 v2.40.0
+	github.com/caarlos0/env/v11 v11.4.2
+	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-playground/locales v0.14.1
@@ -28,6 +30,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/go-redis/redis_rate/v10 v10.0.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
