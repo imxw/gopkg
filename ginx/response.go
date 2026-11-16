@@ -33,17 +33,17 @@ type Response[T any] struct {
 
 // Success sends a successful JSON response with data.
 func Success[T any](c *gin.Context, data T) {
-	c.JSON(errorx.OK.Status, Response[T]{
-		Code: errorx.OK.BusinessCode,
-		Msg:  errorx.OK.Message,
+	c.JSON(errorx.OK.HTTPStatus(), Response[T]{
+		Code: errorx.OK.Code(),
+		Msg:  errorx.OK.Message(),
 		Data: data,
 	})
 }
 
 // SuccessWithMessage sends a successful JSON response with a custom message.
 func SuccessWithMessage[T any](c *gin.Context, data T, message string) {
-	c.JSON(errorx.OK.Status, Response[T]{
-		Code: errorx.OK.BusinessCode,
+	c.JSON(errorx.OK.HTTPStatus(), Response[T]{
+		Code: errorx.OK.Code(),
 		Msg:  message,
 		Data: data,
 	})
@@ -87,20 +87,20 @@ func writeError(c *gin.Context, err error, details any) {
 		err = errorx.ErrInternal
 	}
 	ex := errorx.FromError(err)
-	if ex.Status >= 500 {
+	if ex.HTTPStatus() >= 500 {
 		logger.CtxErrorw(c.Request.Context(), "server error",
-			logger.IntField("biz_code", ex.BusinessCode), logger.ErrorField(err))
+			logger.IntField("biz_code", ex.Code()), logger.ErrorField(err))
 	}
 	// 请求关联 ID：ErrorX 显式携带的 TraceID 优先，否则取 RequestID
 	// 中间件注入的上下文值（NewEngine 默认挂链首）。
-	requestID := ex.TraceID
+	requestID := ex.TraceID()
 	if requestID == "" {
 		requestID = contextx.RequestID(c.Request.Context())
 	}
-	c.JSON(ex.Status, Response[any]{
-		Code:      ex.BusinessCode,
-		Msg:       ex.Message,
-		Error:     ex.Name,
+	c.JSON(ex.HTTPStatus(), Response[any]{
+		Code:      ex.Code(),
+		Msg:       ex.Message(),
+		Error:     ex.Name(),
 		RequestID: requestID,
 		Data:      nil,
 		Details:   details,

@@ -11,11 +11,11 @@ import (
 
 func TestNew(t *testing.T) {
 	e := New(1001, 400, "BAD_REQUEST", "bad request")
-	assert.Equal(t, 1001, e.BusinessCode)
-	assert.Equal(t, 400, e.Status)
-	assert.Equal(t, "BAD_REQUEST", e.Name)
-	assert.Equal(t, "bad request", e.Message)
-	assert.Nil(t, e.RawErr)
+	assert.Equal(t, 1001, e.Code())
+	assert.Equal(t, 400, e.HTTPStatus())
+	assert.Equal(t, "BAD_REQUEST", e.Name())
+	assert.Equal(t, "bad request", e.Message())
+	assert.Nil(t, e.Unwrap())
 }
 
 func TestError_String(t *testing.T) {
@@ -35,32 +35,32 @@ func TestError_StringWithRawErr(t *testing.T) {
 func TestError_StringWithExtra(t *testing.T) {
 	e := New(1001, 400, "BAD_REQUEST", "bad request").WithExtra("field", "name")
 	s := e.Error()
-	assert.Contains(t, s, "extra=map[field:name]")
+	assert.Contains(t, s, "extra=field=name")
 }
 
 func TestWrap_Immutable(t *testing.T) {
 	base := New(1001, 400, "BAD_REQUEST", "original")
 	wrapped := base.Wrap(errors.New("inner"))
 
-	assert.Nil(t, base.RawErr, "original should not be modified")
-	assert.Equal(t, "inner", wrapped.RawErr.Error())
-	assert.Equal(t, base.BusinessCode, wrapped.BusinessCode)
+	assert.Nil(t, base.Unwrap(), "original should not be modified")
+	assert.Equal(t, "inner", wrapped.Unwrap().Error())
+	assert.Equal(t, base.Code(), wrapped.Code())
 }
 
 func TestWithMessage_Immutable(t *testing.T) {
 	base := New(1001, 400, "BAD_REQUEST", "original")
 	updated := base.WithMessage("updated")
 
-	assert.Equal(t, "original", base.Message, "original should not be modified")
-	assert.Equal(t, "updated", updated.Message)
+	assert.Equal(t, "original", base.Message(), "original should not be modified")
+	assert.Equal(t, "updated", updated.Message())
 }
 
 func TestWithExtra_Immutable(t *testing.T) {
 	base := New(1001, 400, "BAD_REQUEST", "original")
 	withExtra := base.WithExtra("key", "val")
 
-	assert.Nil(t, base.Extra, "original should not be modified")
-	assert.Equal(t, "val", withExtra.Extra["key"])
+	assert.Nil(t, base.Extra(), "original should not be modified")
+	assert.Equal(t, "val", withExtra.Extra()["key"])
 }
 
 func TestWithExtra_ChainDoesNotShareMap(t *testing.T) {
@@ -68,9 +68,9 @@ func TestWithExtra_ChainDoesNotShareMap(t *testing.T) {
 	e1 := base.WithExtra("k1", "v1")
 	e2 := e1.WithExtra("k2", "v2")
 
-	assert.Equal(t, "v1", e2.Extra["k1"], "chained extra should preserve previous")
-	assert.Equal(t, "v2", e2.Extra["k2"])
-	_, hasK2 := e1.Extra["k2"]
+	assert.Equal(t, "v1", e2.Extra()["k1"], "chained extra should preserve previous")
+	assert.Equal(t, "v2", e2.Extra()["k2"])
+	_, hasK2 := e1.Extra()["k2"]
 	assert.False(t, hasK2, "e1 should not have k2 from e2")
 }
 
@@ -114,16 +114,16 @@ func TestFromError_ErrorX(t *testing.T) {
 
 func TestFromError_StandardError(t *testing.T) {
 	result := FromError(errors.New("std error"))
-	assert.Equal(t, CodeInternal, result.BusinessCode)
-	assert.Equal(t, http.StatusInternalServerError, result.Status)
-	assert.NotNil(t, result.RawErr)
+	assert.Equal(t, CodeInternal, result.Code())
+	assert.Equal(t, http.StatusInternalServerError, result.HTTPStatus())
+	assert.NotNil(t, result.Unwrap())
 }
 
 func TestFromError_WrappedErrorX(t *testing.T) {
 	base := New(1001, 400, "BAD_REQUEST", "bad request")
 	wrapped := base.Wrap(errors.New("inner"))
 	result := FromError(wrapped)
-	assert.Equal(t, 1001, result.BusinessCode)
+	assert.Equal(t, 1001, result.Code())
 }
 
 func TestUnwrap(t *testing.T) {
@@ -155,7 +155,7 @@ func TestErrorsAs(t *testing.T) {
 	err := New(1001, 400, "BAD_REQUEST", "base").Wrap(errors.New("inner"))
 	var ex *ErrorX
 	assert.True(t, errors.As(err, &ex))
-	assert.Equal(t, 1001, ex.BusinessCode)
+	assert.Equal(t, 1001, ex.Code())
 }
 
 func TestPredefinedErrors(t *testing.T) {
@@ -179,18 +179,18 @@ func TestPredefinedErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.code, tt.err.BusinessCode)
-			assert.Equal(t, tt.status, tt.err.Status)
-			assert.Equal(t, tt.errName, tt.err.Name)
+			assert.Equal(t, tt.code, tt.err.Code())
+			assert.Equal(t, tt.status, tt.err.HTTPStatus())
+			assert.Equal(t, tt.errName, tt.err.Name())
 		})
 	}
 }
 
 func TestWithTraceID(t *testing.T) {
 	e := New(1001, 400, "BAD_REQUEST", "err").WithTraceID("trace-123")
-	assert.Equal(t, "trace-123", e.TraceID)
+	assert.Equal(t, "trace-123", e.TraceID())
 	orig := New(1001, 400, "BAD_REQUEST", "err")
-	assert.Equal(t, "", orig.TraceID)
+	assert.Equal(t, "", orig.TraceID())
 }
 
 func TestChainedOperations(t *testing.T) {
@@ -199,10 +199,35 @@ func TestChainedOperations(t *testing.T) {
 		WithExtra("user_id", "123").
 		Wrap(errors.New("query failed"))
 
-	assert.Equal(t, CodeNotFound, e.BusinessCode)
-	assert.Equal(t, "NOT_FOUND", e.Name)
-	assert.Equal(t, "user not found", e.Message)
-	assert.Equal(t, "123", e.Extra["user_id"])
-	require.NotNil(t, e.RawErr)
-	assert.Equal(t, "query failed", e.RawErr.Error())
+	assert.Equal(t, CodeNotFound, e.Code())
+	assert.Equal(t, "NOT_FOUND", e.Name())
+	assert.Equal(t, "user not found", e.Message())
+	assert.Equal(t, "123", e.Extra()["user_id"])
+	require.NotNil(t, e.Unwrap())
+	assert.Equal(t, "query failed", e.Unwrap().Error())
+}
+
+// v0.12：Extract 只读投影（WS/gRPC 等非 HTTP 出口的消费形态）+ 稳定 Error 输出。
+func TestExtract(t *testing.T) {
+	code, name, msg, ok := Extract(ErrNotFound.WithMessage("host missing"))
+	assert.True(t, ok)
+	assert.Equal(t, CodeNotFound, code)
+	assert.Equal(t, "NOT_FOUND", name)
+	assert.Equal(t, "host missing", msg)
+
+	_, _, _, ok = Extract(errors.New("plain"))
+	assert.False(t, ok)
+	_, _, _, ok = Extract(nil)
+	assert.False(t, ok)
+}
+
+func TestError_StringWithExtra_SortedStable(t *testing.T) {
+	e := New(1001, 400, "BAD_REQUEST", "bad request").
+		WithExtra("z_last", 1).
+		WithExtra("a_first", 2).
+		WithExtra("m_mid", 3)
+	out := e.Error()
+	assert.Contains(t, out, "extra=a_first=2,m_mid=3,z_last=1", "键排序输出，日志可 diff")
+	// 两次渲染逐字节一致（map 迭代序不再泄漏进日志）。
+	assert.Equal(t, out, e.Error())
 }
