@@ -63,7 +63,8 @@ func TestSync_NormalLogger(t *testing.T) {
 // 即日志已入 core」的语义（业界对 Fatal 便捷层的常规测法：以 DPanic
 // 等价物验证链路，或直接以开发构建验证）。为不引入 os.Exit，改以
 // Debug/Info/Warn/Error + Ctx 五族穿透验证，Fatal 族保留人工冒烟。
-func TestCtxHelpers_ReachObservedCore(t *testing.T) {	logs := newObserved(t)
+func TestCtxHelpers_ReachObservedCore(t *testing.T) {
+	logs := newObserved(t)
 	ctx := context.Background()
 
 	Debug("plain debug")

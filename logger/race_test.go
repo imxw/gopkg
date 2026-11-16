@@ -13,7 +13,7 @@ func TestSetLogger_Nil(t *testing.T) {
 	globalLoggerMu.Lock()
 	globalLogger = nil
 	initOnce = sync.Once{}
-		initFired.Store(false)
+	initFired.Store(false)
 	globalLoggerMu.Unlock()
 
 	SetLogger(nil)
@@ -25,7 +25,7 @@ func TestSetLogger_Replace(t *testing.T) {
 	globalLoggerMu.Lock()
 	globalLogger = nil
 	initOnce = sync.Once{}
-		initFired.Store(false)
+	initFired.Store(false)
 	globalLoggerMu.Unlock()
 
 	testLogger := zap.NewExample()
@@ -38,7 +38,7 @@ func TestL_FallbackInit(t *testing.T) {
 	globalLoggerMu.Lock()
 	globalLogger = nil
 	initOnce = sync.Once{}
-		initFired.Store(false)
+	initFired.Store(false)
 	globalLoggerMu.Unlock()
 
 	l := L()

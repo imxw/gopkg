@@ -36,23 +36,23 @@ type Transition struct {
 
 // TransitionResult 转换结果
 type TransitionResult struct {
-	FromState   string `json:"fromState"`
-	ToState     string `json:"toState"`
-	ToStateID   string `json:"toStateId"`
-	Operation   string `json:"operation"`
-	Label       string `json:"label,omitempty"`
-	Permission  string `json:"permission,omitempty"`
-	Action      string `json:"action,omitempty"`
+	FromState  string `json:"fromState"`
+	ToState    string `json:"toState"`
+	ToStateID  string `json:"toStateId"`
+	Operation  string `json:"operation"`
+	Label      string `json:"label,omitempty"`
+	Permission string `json:"permission,omitempty"`
+	Action     string `json:"action,omitempty"`
 }
 
 // Machine 表示一个完整的状态机定义
 type Machine struct {
-	ID           string        `json:"id"`
-	Name         string        `json:"name"`
-	DisplayName  string        `json:"displayName"`
-	InitialState string        `json:"initialState"`
-	States       []State       `json:"states"`
-	Transitions  []Transition  `json:"transitions"`
+	ID           string       `json:"id"`
+	Name         string       `json:"name"`
+	DisplayName  string       `json:"displayName"`
+	InitialState string       `json:"initialState"`
+	States       []State      `json:"states"`
+	Transitions  []Transition `json:"transitions"`
 }
 
 // stateMap 状态 ID/Name → State 的索引
@@ -63,8 +63,8 @@ type stateMap struct {
 
 // Engine 状态机引擎，提供状态转换校验
 type Engine struct {
-	machine Machine
-	states  stateMap
+	machine     Machine
+	states      stateMap
 	transByFrom map[string][]Transition // from_state_id → transitions
 }
 
